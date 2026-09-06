@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#04060a">
-<title>星舰巡航 · Starfield</title>
+<title>Service Cruiser · L039 v1.0</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body {
@@ -69,6 +69,18 @@
     background: rgba(200,205,215,.4);
     box-shadow: 0 0 0 2px rgba(200,205,215,.12);
   }
+  #radioLabel {
+    position:fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 84px);
+    left: 18px;
+    font: 8px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing:.12em;
+    color: rgba(180,185,195,.45);
+    z-index:3; pointer-events:none;
+  }
+  #radioBtn.on ~ #radioLabel {
+    color: rgba(110,230,140,.6);
+  }
   #radioBtn.on .radio-icon {
     background: #6fe88a;
     box-shadow: 0 0 6px rgba(110,230,140,.8), 0 0 0 2px rgba(110,230,140,.18);
@@ -117,6 +129,18 @@
   }
   #zoneName.show { opacity:1; }
   #zoneName.danger { color: #ff5a4e; text-shadow: 0 0 14px rgba(255,60,40,.8), 0 1px 3px rgba(0,0,0,.85); }
+  #cargoNotify {
+    position:fixed;
+    top: 32%;
+    left:50%; transform:translateX(-50%);
+    font-size:15px; letter-spacing:.12em; white-space:nowrap;
+    color: rgba(255,180,70,.98);
+    text-shadow: 0 0 16px rgba(255,150,40,.7), 0 1px 4px rgba(0,0,0,.9);
+    opacity:0; transition: opacity .3s ease;
+    pointer-events:none;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  #cargoNotify.show { opacity:1; }
   #towTip {
     position:fixed;
     top: calc(env(safe-area-inset-top, 0px) + 42px);
@@ -128,6 +152,20 @@
     pointer-events:none;
   }
   #towTip.show { opacity:1; }
+  #controlNotice {
+    position:fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 64px);
+    left:50%; transform:translateX(-50%);
+    font-size:13px; letter-spacing:.14em; white-space:nowrap;
+    color: #8affb0;
+    text-shadow: 0 0 14px rgba(60,220,120,.6), 0 1px 3px rgba(0,0,0,.9);
+    border:1px solid rgba(120,255,160,.35);
+    background: rgba(8,20,12,.55);
+    padding:5px 14px; border-radius:4px;
+    opacity:0; transition: opacity .35s ease;
+    pointer-events:none; z-index:6;
+  }
+  #controlNotice.show { opacity:1; }
   #zoneAlert {
     position:fixed; inset:0; z-index:2;
     pointer-events:none;
@@ -193,6 +231,40 @@
     -webkit-tap-highlight-color:transparent;
   }
   #helpBtn:hover, #helpBtn:active { background: rgba(100,104,110,.7); color: rgba(255,255,255,.85); }
+
+  /* 废弃站靠近警告（顶部淡红次要提示） */
+  #wreckWarn {
+    position:fixed; top:calc(env(safe-area-inset-top,0px) + 54px); left:50%; transform:translateX(-50%);
+    color:rgba(255,150,150,.85); font:11px/1.4 ui-monospace,monospace; letter-spacing:.5px;
+    background:rgba(40,10,10,.35); border:1px solid rgba(255,120,120,.25); border-radius:6px;
+    padding:4px 12px; z-index:3; pointer-events:none; opacity:0; transition:opacity .3s; white-space:nowrap;
+  }
+  #wreckWarn.show { opacity:1; }
+  /* 时空胶囊：靠近交互提示 */
+  #capsulePrompt {
+    position:fixed; left:50%; bottom:18%; transform:translateX(-50%);
+    background:rgba(30,34,38,.88); border:1px solid rgba(255,220,120,.4); border-radius:8px;
+    color:#f0d890; font:12px/1.3 ui-monospace,monospace; padding:10px 16px; z-index:5;
+    opacity:0; pointer-events:none; transition:opacity .25s; text-align:center; max-width:80%;
+  }
+  #capsulePrompt.show { opacity:1; pointer-events:auto; }
+  /* 时空胶囊正文弹窗 */
+  #capsuleOverlay { position:fixed; inset:0; z-index:6; }
+  #capsuleOverlay.hidden { display:none; }
+  #capsuleOverlay .backdrop { position:absolute; inset:0; background:rgba(0,0,0,.66); }
+  #capsuleOverlay .card {
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:min(86vw,420px); max-height:72vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    background:rgba(18,22,26,.97); border:1px solid rgba(255,220,140,.3); border-radius:12px;
+    padding:22px 20px; color:rgba(235,228,210,.92);
+  }
+  #capsuleOverlay .close {
+    position:absolute; right:12px; top:10px; width:30px; height:30px; border-radius:50%;
+    border:none; background:rgba(255,255,255,.08); color:rgba(255,255,255,.7); font-size:18px;
+  }
+  #capsuleOverlay .tag { font:10px ui-monospace,monospace; letter-spacing:1px; color:rgba(255,214,130,.7); }
+  #capsuleOverlay h3 { margin:6px 0 14px; font-size:15px; color:#f0d890; font-weight:600; }
+  #capsuleOverlay p { font-size:13px; line-height:1.8; white-space:pre-line; margin:0; color:rgba(228,222,205,.9); }
 
   /* ===== 开火按钮（拟物化） ===== */
   #fire {
@@ -279,19 +351,39 @@
   /* ===== 信息按钮 + 武器介绍面板 ===== */
   #infoBtn {
     position:fixed;
-    right: calc(env(safe-area-inset-right, 0px) + 39px);
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 104px);
-    width:30px; height:30px; border-radius:50%;
+    top: calc(env(safe-area-inset-top, 0px) + 148px);
+    right: 18px;
+    width:22px; height:22px; border-radius:50%;
     pointer-events:auto; cursor:pointer; z-index:3;
-    border:1px solid rgba(255,255,255,.22);
-    background: rgba(255,255,255,.08);
-    color: rgba(255,255,255,.55);
-    font: 15px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    border:1px solid rgba(255,255,255,.2);
+    background: rgba(80,84,90,.5);
+    color: rgba(255,255,255,.6);
+    font: 13px/1 ui-monospace, monospace;
     line-height:1; display:flex; align-items:center; justify-content:center;
     outline:none; -webkit-tap-highlight-color:transparent;
     transition: background .15s, color .15s;
   }
   #infoBtn:active, #infoBtn.open { background: rgba(255,255,255,.16); color:#fff; }
+  #bgmBtn {
+    position:fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 178px);
+    right: 18px;
+    width:22px; height:22px; border-radius:50%;
+    pointer-events:auto; cursor:pointer; z-index:3;
+    border:1px solid rgba(255,255,255,.2);
+    background: rgba(80,84,90,.5);
+    color: rgba(255,255,255,.6);
+    font: 14px/1 ui-monospace, monospace;
+    line-height:1; display:flex; align-items:center; justify-content:center;
+    outline:none; -webkit-tap-highlight-color:transparent;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  #bgmBtn.playing {
+    background: rgba(50,90,60,.6);
+    border-color: rgba(110,232,138,.4);
+    color: #6fe88a;
+  }
+  #bgmBtn:active { background: rgba(255,255,255,.16); }
 
   /* ===== 三档火控推杆 ===== */
   #modeWrap {
@@ -700,7 +792,6 @@
   #hud.damage-dim #radioBtn,
   #hud.damage-dim #radioMsgs,
   #hud.damage-dim #minimap,
-  #hud.damage-dim #briefBtn,
   #hud.damage-dim #infoBtn,
   #hud.damage-dim #fire,
   #hud.damage-dim #modeWrap,
@@ -723,7 +814,6 @@
   #hud.combat-dim #killCount,
   #hud.combat-dim #radioBtn,
   #hud.combat-dim #radioMsgs,
-  #hud.combat-dim #briefBtn,
   #hud.combat-dim #infoBtn,
   #hud.combat-dim #trafficInfo,
   #hud.combat-dim #zoneName {
@@ -811,80 +901,36 @@
   #infoPanel .fineprint p { margin:0 0 8px; }
   #infoPanel .fineprint p:last-child { margin-bottom:0; }
   #infoPanel .ciws-block { margin-top:18px; padding-top:16px; }
+  /* 信息卡二级分页：空间站信息概况 */
+  #infoPageStations.hidden, #infoPageMain.hidden { display:none; }
+  #infoPanel .page-entry {
+    margin-top:18px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+    color:rgba(200,220,255,.88); font:13px ui-monospace,monospace;
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:8px;
+    padding:12px 14px; pointer-events:auto; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  #infoPanel .page-entry:active { background:rgba(255,255,255,.13); }
+  #infoPanel .page-entry .arr { color:rgba(200,220,255,.6); }
+  #infoPanel .page-back {
+    display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.15); color:rgba(255,255,255,.82); border-radius:7px;
+    padding:7px 12px; font:12px ui-monospace,monospace; margin-bottom:14px;
+    cursor:pointer; pointer-events:auto; -webkit-tap-highlight-color:transparent;
+  }
+  #infoPanel .page-back:active { background:rgba(255,255,255,.15); }
+  #infoPageStations .st-title { font-size:13px; color:#cfe0ff; margin:0 0 16px; letter-spacing:.5px; }
+  .st-item { display:flex; gap:12px; margin-bottom:18px; }
+  .st-mark { flex:0 0 18px; display:flex; align-items:flex-start; justify-content:center; padding-top:3px; }
+  .st-body { flex:1; min-width:0; }
+  .st-name { font-size:13px; font-weight:600; color:#e6ecf4; margin-bottom:4px; }
+  .st-absent { font-size:10px; color:rgba(255,200,120,.62); margin-bottom:5px; letter-spacing:.3px; }
+  .st-text { font-size:12px; line-height:1.75; color:rgba(214,220,228,.82); white-space:pre-line; }
+  .st-mark .sq { width:11px; height:11px; }
+  .st-E { font:bold 13px/1 ui-monospace,monospace; color:#fff; }
+  .st-tri { width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:10px solid #f0c850; }
   #infoPanel .ciws-block .divider {
     height:1px; margin-bottom:16px;
     background: linear-gradient(to right, rgba(255,255,255,.18), rgba(255,255,255,.04) 70%, transparent);
-  }
-  /* ===== 任务简报按钮（左下角 · 拟物任务板） ===== */
-  #briefBtn {
-    position:fixed;
-    right: calc(env(safe-area-inset-right, 0px) + 20px);
-    top: calc(50% - 58px);
-    width:36px; height:36px; border-radius:6px;
-    pointer-events:auto; cursor:pointer; z-index:3;
-    border:1px solid rgba(255,255,255,.22);
-    background:
-      radial-gradient(circle at 30% 25%, rgba(255,255,255,.16), rgba(255,255,255,0) 55%),
-      linear-gradient(145deg, #565a61, #33363b 70%, #232529);
-    box-shadow: inset 0 1px 2px rgba(255,255,255,.20), inset 0 -2px 4px rgba(0,0,0,.5), 0 2px 5px rgba(0,0,0,.5), 0 0 0 1px rgba(0,0,0,.6);
-    outline:none; -webkit-tap-highlight-color:transparent;
-    transition: filter .15s;
-  }
-  #briefBtn:active, #briefBtn.open { filter: brightness(1.3); }
-  #briefBtn::before {
-    content:''; position:absolute; left:9px; top:10px; width:18px; height:13px;
-    border-radius:2px;
-    background: linear-gradient(180deg, #e8eaee, #c9ccd2);
-    box-shadow: inset 0 1px 2px rgba(0,0,0,.35), 0 0 0 1px rgba(0,0,0,.45);
-  }
-  #briefBtn::after {
-    content:''; position:absolute; left:11px; top:13px; width:14px; height:2px; border-radius:1px;
-    background: rgba(96,101,108,.85);
-    box-shadow: 0 3.5px 0 rgba(96,101,108,.85), 0 7px 0 rgba(96,101,108,.5);
-  }
-  #briefBtn .pin {
-    position:absolute; left:50%; top:10px; width:4px; height:4px; margin-left:-2px;
-    border-radius:50%;
-    background: radial-gradient(circle at 35% 30%, #ff8a7a, #d23a2c 70%);
-    box-shadow: 0 0 3px rgba(255,80,60,.6);
-    z-index:1;
-  }
-  .rd { color:#ff5a4e; font-weight:600; }
-  /* ===== 任务简报面板（复用武器信息面板观感） ===== */
-  #briefPanel { position:fixed; inset:0; z-index:4; pointer-events:auto; }
-  #briefPanel.hidden { display:none; }
-  #briefPanel .backdrop {
-    position:absolute; inset:0; background:rgba(2,4,6,.55);
-    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
-  }
-  #briefPanel .card {
-    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-    width:min(560px, 86vw);
-    background:#0b0e13;
-    border:1px solid rgba(255,255,255,.14);
-    border-radius:12px;
-    padding:24px 26px 22px;
-    box-shadow: 0 18px 50px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.6);
-    font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
-  }
-  #briefPanel .close {
-    position:absolute; top:10px; right:12px;
-    width:28px; height:28px; border:none; background:none;
-    color:rgba(255,255,255,.5); font-size:20px; line-height:1; cursor:pointer;
-    border-radius:6px; outline:none;
-  }
-  #briefPanel .close:active { background:rgba(255,255,255,.12); color:#fff; }
-  #briefPanel .head { margin-bottom:16px; padding-right:28px; }
-  #briefPanel .tag {
-    display:inline-block; font-size:11px; letter-spacing:.18em;
-    color: rgba(249,224,138,.85); margin-bottom:8px;
-    border:1px solid rgba(249,224,138,.35); border-radius:3px; padding:2px 8px;
-  }
-  #briefPanel h2 {
-    font-size:17px; font-weight:500; color:#f4f6f8; line-height:1.45; letter-spacing:.02em; margin:0;
-  }
-  #briefPanel .intro {
-    font-size:13px; line-height:1.9; color:rgba(235,238,242,.82); margin:0;
   }
   /* 空间站靠泊菜单 */
   #stationPanel { position:fixed; inset:0; z-index:4; pointer-events:auto; }
@@ -984,6 +1030,47 @@
   #milPanel .st-desc { color:rgba(180,210,255,.45); }
   #milPanel .st-divider { background:rgba(120,180,255,.12); }
 
+  /* 公牛5号矿业平台靠泊菜单（橙色主题） */
+  #astPanel { position:fixed; inset:0; z-index:4; pointer-events:auto; }
+  #astPanel.hidden { display:none; }
+  #astPanel .backdrop {
+    position:absolute; inset:0; background:rgba(10,6,2,.55);
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  }
+  #astPanel .card {
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:min(420px, 86vw);
+    background:#120e08;
+    border:1px solid rgba(232,160,64,.3);
+    border-radius:12px;
+    padding:22px 24px 20px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.6), 0 0 24px rgba(232,160,64,.1);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  #astPanel .close {
+    position:absolute; top:10px; right:12px;
+    width:28px; height:28px; border:none; background:none;
+    color:rgba(255,200,140,.5); font-size:20px; line-height:1; cursor:pointer;
+    border-radius:6px; outline:none;
+  }
+  #astPanel .close:active { background:rgba(232,160,64,.15); color:#ffe4c0; }
+  #astPanel .head { margin-bottom:14px; padding-right:28px; }
+  #astPanel .tag {
+    display:inline-block; font-size:11px; letter-spacing:.18em;
+    color: rgba(255,200,100,.9); margin-bottom:8px;
+    border:1px solid rgba(232,160,64,.45); border-radius:3px; padding:2px 8px;
+  }
+  #astPanel h2 { font-size:17px; font-weight:500; color:#fff4e0; margin:0; }
+  #astPanel .station-btn {
+    border-color: rgba(232,160,64,.2);
+    background: rgba(232,160,64,.05);
+  }
+  #astPanel .station-btn:active { background:rgba(232,160,64,.12); }
+  #astPanel .station-btn:disabled { opacity:.3; cursor:default; }
+  #astPanel .st-title { color:#ffe8c8; }
+  #astPanel .st-desc { color:rgba(255,200,140,.5); }
+  #astPanel .st-divider { background:rgba(232,160,64,.12); }
+
   /* 帮助面板 */
   #helpPanel { position:fixed; inset:0; z-index:4; pointer-events:auto; }
   #helpPanel.hidden { display:none; }
@@ -1021,6 +1108,18 @@
   .boarding-slider-thumb { position:absolute; left:4px; top:4px; width:44px; height:44px; background:rgba(255,80,80,0.8); border-radius:22px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:20px; font-weight:bold; cursor:grab; touch-action:none; user-select:none; }
   .boarding-slider-thumb:active { cursor:grabbing; }
   .boarding-hint { margin-top:12px; font-size:12px; color:rgba(255,255,255,0.4); letter-spacing:1px; }
+  /* 护航维修滑块（工程橘黄，右至左） */
+  #escortRepairOverlay { position:fixed; inset:0; z-index:5; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); pointer-events:auto; }
+  #escortRepairOverlay.hidden { display:none; }
+  .er-card { background:rgba(20,22,26,0.95); border:1px solid rgba(232,160,64,0.5); border-radius:12px; padding:28px 32px; width:80%; max-width:400px; text-align:center; }
+  .er-title { font-size:18px; color:#e8a040; font-weight:600; margin-bottom:8px; letter-spacing:1px; }
+  .er-sub { font-size:13px; color:rgba(255,255,255,0.7); margin-bottom:24px; line-height:1.5; }
+  .er-slider-wrap { position:relative; }
+  .er-slider-track { position:relative; height:52px; background:rgba(255,255,255,0.08); border-radius:26px; border:1px solid rgba(232,160,64,0.3); overflow:hidden; touch-action:none; }
+  .er-slider-fill { position:absolute; right:0; top:0; bottom:0; width:0%; background:rgba(232,160,64,0.25); transition:width 0.05s; }
+  .er-slider-thumb { position:absolute; right:4px; top:4px; width:44px; height:44px; background:rgba(232,160,64,0.85); border-radius:22px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:20px; font-weight:bold; cursor:grab; touch-action:none; user-select:none; }
+  .er-slider-thumb:active { cursor:grabbing; }
+  .er-hint { margin-top:12px; font-size:12px; color:rgba(255,255,255,0.4); letter-spacing:1px; }
   #helpPanel .head { margin-bottom:14px; padding-right:28px; }
   #helpPanel .tag {
     display:inline-block; font: 9px/1 ui-monospace, monospace;
@@ -1055,6 +1154,7 @@
   .dot-drone { background:#a03030; }
   .dot-suspicious { background:#b050dd; }
   .dot-rescue { background:#ff4040; }
+  .dot-asteroid { background:#e8a040; }
   .dot-merchant { background:#78c8ff; }
   .dot-barge { background:#e8c840; }
   .dot-beacon { background:#ff5050; }
@@ -1063,6 +1163,8 @@
   .sq-blue { background:#4488ff; }
   .sq-red { background:#ff6464; }
   .sq-green { background:#3c7846; }
+  .sq-gray { background:#969696; }
+  .sq-asteroid { background:#e8a040; }
   /* 靠泊提示 */
   #dockPrompt {
     position:fixed; left:50%; top:38%; transform:translate(-50%,-50%);
@@ -1117,12 +1219,11 @@
   @media (max-width:520px){
     #infoPanel h2 { font-size:15px; }
     #infoPanel .intro { font-size:12.5px; }
-    #briefPanel h2 { font-size:15px; }
-    #briefPanel .intro { font-size:12.5px; }
   }
 </style>
 </head>
 <body>
+
 <canvas id="game"></canvas>
 <div id="hud">
   <div id="coords">X 0000 · Y 0000</div>
@@ -1130,14 +1231,17 @@
   <button id="radioBtn" aria-label="无线电" tabindex="-1">
     <span class="radio-icon"></span><span class="radio-label">RADIO</span>
   </button>
+  <div id="radioLabel">勤务</div>
   <div id="radioMsgs"></div>
   <div id="killCount">击毁 0</div>
   <button id="stopBtn" aria-label="紧急停机" tabindex="-1"><span class="stopIcon"></span></button>
   <div id="zoom">×1.00</div>
   <button id="helpBtn" aria-label="操作帮助" tabindex="-1">?</button>
   <div id="zoneName"></div>
+  <div id="cargoNotify"></div>
   <div id="towTip"></div>
   <div id="obsTip"></div>
+  <div id="controlNotice"></div>
   <div id="zoneAlert"></div>
   <div id="trafficInfo"></div>
   <div id="collisionWarn"></div>
@@ -1158,8 +1262,8 @@
   </div>
   <div id="modeTag">常规</div>
   <button id="infoBtn" aria-label="武器信息" tabindex="-1">i</button>
+  <button id="bgmBtn" aria-label="音乐" tabindex="-1">♪</button>
   <div id="armorIcon"></div>
-  <button id="briefBtn" aria-label="任务简报" tabindex="-1"><span class="pin"></span></button>
   <!-- 左下角：近防炮开火按钮 + 模式推杆 -->
   <button id="aimToggle" aria-label="辅助瞄准开关" tabindex="-1"><span class="aim-light"></span></button>
   <button id="ciwsFire" aria-label="近防炮开火" tabindex="-1">
@@ -1268,15 +1372,25 @@
       </div>
     </div>
   </div>
-  <div id="briefPanel" class="hidden">
+  <div id="astPanel" class="hidden">
     <div class="backdrop"></div>
     <div class="card">
       <button class="close" aria-label="关闭">×</button>
       <div class="head">
-        <span class="tag">任务简报 · L039星门</span>
-        <h2>航道清漂作业</h2>
+        <span class="tag">公牛五号矿业平台</span>
+        <h2>靠泊服务</h2>
       </div>
-      <p class="intro">你舰遵照<span class="rd">1.14.514b</span>号<span class="rd">sop</span>，入本港管制区清理<span class="rd">L039-6</span>进港航路缓冲区空漂物，作业范围已标注在海图，本港塔台令你舰保持守听公频、加强瞭望，避让本港无人驳船和过往船只。</p>
+      <div class="station-body">
+        <button id="astRepair" class="station-btn">
+          <span class="st-title">舰体维修</span>
+          <span class="st-desc">本空间站没有维修巡洋舰的能力，不过我们可以试试看</span>
+        </button>
+        <div class="st-divider"></div>
+        <button id="astCargo" class="station-btn">
+          <span class="st-title">协助运输</span>
+          <span class="st-desc">只有巡洋舰能搞定这件超重货物</span>
+        </button>
+      </div>
     </div>
   </div>
   <div id="helpPanel" class="hidden">
@@ -1285,20 +1399,20 @@
       <button class="close" aria-label="关闭">×</button>
       <div class="head">
         <span class="tag">操作手册</span>
-        <h2>舰船操作指南</h2>
+        <h2>舰船操作指南 <span style="font-size:11px;opacity:.45;font-weight:400">v1.0.0</span></h2>
       </div>
       <div class="help-body">
         <div class="help-sec">基本舰船操控</div>
-        <div class="help-item"><b>引擎：</b>拨动屏幕左侧的车钟切换引擎档位，在加力档向右挂档可进入战斗加力。</div>
+        <div class="help-item"><b>引擎：</b>拨动屏幕左侧的车钟切换引擎档位，在加力档向右挂档可进入战斗加力。战斗加力不可退出且无法使用武器系统，除车钟和摇杆外所有HUD将熄灭，3秒后加速至2倍速度，维持5秒后自动恢复至前进二档。</div>
         <div class="help-item"><b>转向：</b>使用屏幕左下角的虚拟摇杆左右推动即可调整航向，在车钟下方有航向指示标志和航向角供您参考。</div>
         <div class="help-item"><b>紧急停机：</b>操作界面右侧有一灰色按钮，点击立刻停船（在战斗加力时不生效）。</div>
-        <div class="help-item"><b>视野缩放：</b>双指捏合可缩放视野。</div>
+        <div class="help-item"><b>视野缩放：</b>双指捏合可缩放视野，最广可缩放至0.25倍。</div>
         <div class="help-sec">武器操控</div>
         <div class="help-item"><b>舰载轨道炮：</b>开火键位于屏幕右侧，模式切换推杆位于开火键左侧。请尤其注意超载模式需要将舰船完全停止后蓄能，发射后舰船会暂时姿态锁定。</div>
-        <div class="help-item"><b>近防炮：</b>近防炮总计四门，共用200发的弹药储量，耗尽后需重新装填。开火键右侧的推杆为自动模式时四门近防自动搜索目标并攻击，手动模式时仅舰首两门近防炮可以手动操作射击。</div>
+        <div class="help-item"><b>近防炮：</b>近防炮总计四门，共用200发的弹药储量，耗尽后需5秒自动装填，装填时可锁定目标但不能开火。开火键右侧的推杆为自动模式时四门近防自动搜索目标并攻击，手动模式时仅舰首两门近防炮可以手动操作射击。</div>
         <div class="help-item"><b>辅助观瞄系统：</b>辅助观瞄系统会在目标进入探测范围内自动锁定目标并辅助您瞄准，舰首的绿色瞄准线可以帮助您精准瞄准目标。请注意金色的瞄准框是近防炮自动锁定的打击目标。近防炮开火按钮的上方是自动瞄准系统开关按钮，红色指示灯为开启，蓝色为关闭。</div>
         <div class="help-sec">太空航行指南</div>
-        <div class="help-item"><b>小地图：</b>HUD右上角有小地图，不同种类的舰船、空间站、任务点和小行星用不同颜色标注。</div>
+        <div class="help-item"><b>小地图：</b>HUD右上角有小地图，不同种类的舰船、空间站、任务点和空漂物用不同颜色标注。</div>
         <div class="help-item"><b>空域目标识别：</b></div>
         <table class="help-table">
           <tr><td><span class="tri tri-white"></span></td><td>玩家舰船</td></tr>
@@ -1308,18 +1422,20 @@
           <tr><td><span class="sq sq-blue"></span></td><td>L039星门0721补给站</td></tr>
           <tr><td><span class="sq sq-red"></span></td><td>建设中的0722燃料站</td></tr>
           <tr><td><span class="sq sq-green"></span></td><td>静海进港航路综合管理前哨站</td></tr>
+          <tr><td><span class="sq sq-gray"></span></td><td>废弃空间站（请勿靠近）</td></tr>
+          <tr><td><span class="sq sq-asteroid"></span></td><td>公牛五号矿业平台</td></tr>
           <tr><td><span class="dot dot-drone"></span></td><td>侦查无人机集群</td></tr>
           <tr><td><span class="dot dot-suspicious"></span></td><td>可疑的船只</td></tr>
           <tr><td><span class="dot dot-rescue"></span></td><td>求救船只</td></tr>
           <tr><td><span class="dot dot-merchant"></span></td><td>商船</td></tr>
           <tr><td><span class="dot dot-barge"></span></td><td>无人驳船</td></tr>
-          <tr><td><span class="dot dot-beacon"></span></td><td>中央管制信标</td></tr>
           <tr><td><span class="dot dot-cargomark"></span></td><td>货运任务临时信标</td></tr>
         </table>
-        <div class="help-item"><b>碰撞与装甲：</b>请注意避让商船和无人驳船，碰撞会导致您的舰体受损，舰体健康度可以在HUD右侧的小三角形处查看，健康度越低颜色越红。</div>
-        <div class="help-item"><b>信标管制：</b>进入信标警戒圈后武器将被锁定无法开火。</div>
-        <div class="help-item"><b>靠泊与任务：</b>靠泊空间站时，进入泊位后停船即可自动唤起菜单，可接取护航、货运、信标维护三种勤务任务。</div>
-        <div class="help-item"><b>无线电：</b>短按HUD左上角的RADIO按钮可开启/关闭无线电频道。</div>
+        <div class="help-item"><b>战斗规则：</b>您可以直接打击的目标为空域中各类空漂物、敌对侦查无人机集群以及可疑船只。对于可疑船只，您可以直接将其摧毁，也可以在其圆形判定范围内停船实施登陆作战，将其控制后牵引至空间站交付。您也可前往发送求救信号的船只坐标，在判定范围内停船接入通讯，协助牵引其至空间站。</div>
+        <div class="help-item"><b>碰撞与装甲：</b>请注意避让空漂物、过往船只、空间站。舰体健康度可在HUD右侧的小三角形处查看，健康度越低颜色越红。装甲低于50%时将触发引擎受损状态，车钟除微速档外全部锁死，引擎光效变为闪烁微光，需驾驶至0721补给站、静海前哨站、公牛5号矿业平台的任意泊位，或中央信标维修区对接以恢复装甲。</div>
+        <div class="help-item"><b>信标管制：</b>进入信标警戒圈后屏幕泛红警示，武器将被锁定无法开火，请遵守停火守则。</div>
+        <div class="help-item"><b>靠泊与任务：</b>当前空域内您可靠泊的空间站总计三座，靠泊需要您进入泊位后停船，下面是分别介绍。<br>0721补给站：在空间站右侧的唯一横置绿色泊位靠泊。可在此维修舰体和接取勤务任务。<br>静海前哨站：您可以在空间站及其附属建筑周边，选择未被占用的蓝色泊位靠泊，请注意空间站右侧的巨型泊位不可供玩家靠泊。在此可维修舰体。<br>公牛5号采矿平台：您可以在空间站栈桥附近，选择未被占用的橙色泊位靠泊，在此空间站靠泊稍有挑战性。在此可维修舰体和接取超重型货运任务。</div>
+        <div class="help-item"><b>无线电：</b>短按HUD左上角的RADIO按钮切换公共频道。按钮灰色时为「勤务频道常开」状态，始终接收任务指令、交管呼叫、求救信号和各空间站广播；按钮绿色时为「全频道接收」，在勤务频道基础上额外播放公共闲聊和港区广播。建议您开启全频道以获取更完整的空域信息。</div>
       </div>
     </div>
   </div>
@@ -1327,15 +1443,31 @@
     <div class="backdrop"></div>
     <div class="card">
       <button class="close" aria-label="关闭">×</button>
+      <div id="infoPageMain">
       <div class="head">
-        <span class="tag">武器型号</span>
-        <h2>“角”-B/SR-1680型加长型攻坚轨道炮</h2>
+        <span class="tag">本舰型号</span>
+        <h2>康纳马拉混沌级轨道炮巡洋舰</h2>
       </div>
+      <div class="head" style="margin-top:4px">
+        <span class="tag">本舰规格</span>
+        <h2 style="font-size:13px">新巴拿马星门尺型巡洋舰</h2>
+      </div>
+      <p class="intro">本舰为木星工业Dysnomia厂对康纳马拉混沌级高速等离子体巡洋舰的低成本改型，原型号舰首的等离子体发射系统换装为一门通用重型轨道炮，舰身的近防导弹和主动干扰系统换装为四门通用近防炮，舰体核心筒减配为勤务舰标准，舰体富余空间搭载了工程仓库，六组工程无人机和其指挥系统。</p>
+      <p class="intro">出于在边境小行星带作业的需求，原型号强大的动力系统被完全保留，赋予本舰出色的机动能力。</p>
+      <p class="intro">本级巡洋舰总计生产六艘，现全部在役，服务于太阳系边境区联勤保障部门，担负边境区的秩序维持任务。母港为L039星门六号进港航路鹰眼城空间港。</p>
+
+      <div class="ciws-block" style="margin-top:14px;padding-top:14px">
+        <div class="divider"></div>
+        <div class="head">
+          <span class="tag">武器型号</span>
+          <h2>“角”-B/SR-1680型加长型攻坚轨道炮</h2>
+        </div>
       <p class="intro">定制的加长型并列加速电磁轨道炮，超长加速机构占据了不少舰体空间，可以赋予重型打击弹药极高的弹药初速，针对大型舰船和建筑物有很强的穿甲能力。</p>
       <blockquote class="quote">“666哥们往轨道炮上装俩发动机就说自己是巡洋舰了”</blockquote>
       <div class="fineprint">
         <p>比邻星节超级福利特惠版轨道炮出厂固件自带三种工作模式，分别为速射、常规和过载，您可以依照观瞄系统的建议，也可以自行选择开火模式，更多信息详阅附件箱1.34中附带的电子使用说明。</p>
         <p>请注意无论何种开火模式使用的弹药都应该来自我们的正规供应商，同时您自行对特惠版轨道炮的固件做出任何更改都会使您失去对轨道炮核心部件的五个地球年包修包换，如您需要更新固件，请联系正规经销商。</p>
+      </div>
       </div>
       <div class="ciws-block">
         <div class="divider"></div>
@@ -1349,7 +1481,101 @@
           <p>一千万内最好的多用途火炮，战列巡洋舰也用的咱家这个型号，没什么需要和您说明的，雷达锁上有框您就打。</p>
         </div>
       </div>
+      <div class="page-entry" id="stEntry"><span>空间站信息概况</span><span class="arr">›</span></div>
+      </div>
+      <div id="infoPageStations" class="hidden">
+        <button class="page-back" id="stBack">‹ 返回</button>
+        <div class="st-title">空域空间站信息概况</div>
+
+        <div class="st-item">
+          <div class="st-mark"><span class="sq sq-blue"></span></div>
+          <div class="st-body">
+            <div class="st-name">L039星门0721补给站</div>
+            <div class="st-text">该补给站由盘古拓展公司建造和经营，采用十六代通用框架结构，通过自旋产生1G标准地球重力。补给站为过往船只提供各类商业服务和港务服务，常驻一个护卫舰小队负责区域治安。
+该补给站拥有六十个排列在空间站港口的通用停泊位，十五个重型泊位，最大支持停泊新巴拿马星门尺型巡洋舰（大型泊位均为远泊位，需乘交通艇接驳）。补给站外围设有一座无重力干船坞，承担简单维修。
+目前补给站作为临近0722燃料站建设工程的指挥基地，也担负着为0722建设工程供应物资的任务。
+海员们对于0721补给站的印象除了老旧、狭小又脏乱之外就是它餐厅供应的咖喱极为难以下咽，因此餐厅总是举办买一送一活动。</div>
+          </div>
+        </div>
+
+        <div class="st-item">
+          <div class="st-mark"><span class="sq sq-red"></span></div>
+          <div class="st-body">
+            <div class="st-name">L039星门0722燃料站</div>
+            <div class="st-text">盘古拓展公司正在建设中的燃料补给站，过往船只可以看到其裸露的框架结构和闪烁的焊接火花，大量的待焊接桁架和货物漂浮在框架结构边。
+预计建成后可以补充六号进港航路燃料站覆盖范围，供应高品质聚变燃料。
+相比于燃料问题，海员们更关注新空间站的餐厅会设在哪，能不能有点人类能吃的食物。</div>
+          </div>
+        </div>
+
+        <div class="st-item">
+          <div class="st-mark"><span class="sq sq-green"></span></div>
+          <div class="st-body">
+            <div class="st-name">静海进港航路综合管理前哨站</div>
+            <div class="st-text">小型军事前哨站，采用灵活的桁架结构，“静海”取自地球的卫星月球表面一片玄武岩平原的名字。
+前哨站具备一个驱逐舰中队的归港补给能力，并具备专精维修小型舰船的1G重力干船坞。
+其附属空间站具备有限的新巴拿马星门尺型巡洋舰及以上尺寸舰船的停泊与补给能力，大多数时间仅作为这类舰船的临时停泊点。目前一艘永恒苍穹级无人机航空母舰在此临时停靠处理厕所系统故障。
+该前哨站按规范二十四小时供应二类灶标准的伙食，这是普通士官在太阳系边境区能吃到的第二好的伙食，第一好是在L039星门鹰眼城空间港四层的军官餐厅，可惜军官餐厅不接待士官。</div>
+          </div>
+        </div>
+
+        <div class="st-item">
+          <div class="st-mark"><span class="sq sq-asteroid"></span></div>
+          <div class="st-body">
+            <div class="st-name">公牛五号矿业平台</div>
+            <div class="st-text">庞大的矿业与航运综合体—超新星运输集团在边境区的实验性空间站，采用集团引以为傲的在小行星中开凿和拓展空间站的先进构型技术。
+作为该平台锚点的小行星内含大量的稀有金属与水合矿物，工程机器人采矿后在平台外延的工业指廊进行全流程分类精炼，最终成品集装箱堆放于货场等待运输。
+根据边境集团军军情七处与木星工业两个月前部分解密的报告，已有足够证据确认超新星运输集团已在边境区的某个空间站小规模量产了他们自己的武装力量—搭载重装甲的脉冲炮驱逐舰。</div>
+          </div>
+        </div>
+
+        <div class="st-item">
+          <div class="st-mark"><span class="sq sq-gray"></span></div>
+          <div class="st-body">
+            <div class="st-name">废弃空间站</div>
+            <div class="st-text">古老的第一代通用框架结构空间站，曾作为太阳系大开发时期的仓储货站。在地球—比邻星双向星门（L039星门）开通后，太阳系边境区逐渐衰落，工业产业快速流失到外星系，本地主要产业转型为星门周边服务业。日益减少的大宗物流需求和该空间站本身的设计缺陷共同促使盘古拓展公司放弃空间站运营，此后空间站经几位投机者倒手套现后被彻底废弃。
+由于空间站轨道稳定，且远离民船航道，工程局默默拖延着它的拆解工作安排，这里也成了大家默认的建筑垃圾倾倒处。</div>
+          </div>
+        </div>
+
+        <div class="st-item">
+          <div class="st-mark"><span class="st-E">E</span></div>
+          <div class="st-body">
+            <div class="st-name">鹰眼城空间港</div>
+            <div class="st-absent">不在本空域，如需前往请报请基地签发许可</div>
+            <div class="st-text">L039星门重要的边境集团军港口，属于复合结构军事综合体，带有多个附属空间站，设计目的为拱卫星门，防范维克多军协等势力袭扰太阳系。
+空间港具有超重型舰船、巨型工程平台的长期靠泊与补给能力。其多个附属空间站建有完备的干船坞系统，可依靠自产预制模组快速维修甚至直接拼装生产航空母舰和战列巡洋舰。
+十六支主要由阎神星级驱逐舰与艾奥级高速巡洋舰混编的快速反应部队在此驻扎，这里也是集团军永恒苍穹级无人机航空母舰战略打击编队的母港。
+目前空间港在积极新建战列舰船坞，迎接木星工业的新战列舰下水入列。根据几张模糊的照片，新战列舰看起来搭载了高精尖的等离子团武器和能量补偿装甲。
+太阳系内居民广泛质疑在边境区部署战列舰似乎不是为了“保护”这座星门，而是成为和某个势力下一轮军备竞赛的导火索，当然也有乐子人觉得新战列舰挺帅的。</div>
+          </div>
+        </div>
+
+        <div class="st-item">
+          <div class="st-mark"><span class="st-tri"></span></div>
+          <div class="st-body">
+            <div class="st-name">L039星门</div>
+            <div class="st-absent">不在本空域，如需前往请报请基地签发许可</div>
+            <div class="st-text">地球—比邻星双向星门，位于相对荒凉的太阳系边境，属于“彼岸计划”第一代星门技术研究的产物。
+L039星门近几百年来经过数次大修勉强延长服役寿命，现在它尽管航行体验糟糕，配套基础设施老化，空域治安较差，但它还是往返太阳系与比邻星赚点辛苦钱，希望节约通行费成本的商船的最爱。
+“哥们我和你说，你要走039回土星，出港以后不要相信任何一家买一送一的餐厅，没一个好吃的”</div>
+          </div>
+        </div>
+
+      </div>
     </div>
+  </div>
+</div>
+
+<div id="wreckWarn">请勿靠近废弃建筑，注意躲避空飘物</div>
+<div id="capsulePrompt">回收到一片奇怪的金属片，请点击查看</div>
+<div id="capsuleOverlay" class="hidden">
+  <div class="backdrop"></div>
+  <div class="card">
+    <button class="close" aria-label="关闭">×</button>
+    <span class="tag">TIME CAPSULE · 时空胶囊</span>
+    <h3>一片被遗弃的金属片</h3>
+    <p id="capsuleBody"></p>
   </div>
 </div>
 
@@ -1368,6 +1594,21 @@
   </div>
 </div>
 
+<!-- 护航维修滑块 -->
+<div id="escortRepairOverlay" class="hidden">
+  <div class="er-card">
+    <div class="er-title">护航目标动力故障</div>
+    <div class="er-sub">协助处理故障</div>
+    <div class="er-slider-wrap">
+      <div class="er-slider-track">
+        <div class="er-slider-fill" id="erFill"></div>
+        <div class="er-slider-thumb" id="erThumb">←</div>
+      </div>
+      <div class="er-hint">向左滑动协助维修</div>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   'use strict';
@@ -1378,26 +1619,49 @@
   var shipStatusEl = document.getElementById('shipStatus');
   var zoomEl = document.getElementById('zoom');
   var zoneNameEl = document.getElementById('zoneName');
+  var cargoNotifyEl = document.getElementById('cargoNotify');
   var zoneAlertEl = document.getElementById('zoneAlert');
   var towTipEl = document.getElementById('towTip');
+  var controlNoticeEl = document.getElementById('controlNotice');
   var towTipTimer = 0;
   var obsTipEl = document.getElementById('obsTip');
   var trafficInfoEl = document.getElementById('trafficInfo');
   var collisionWarnEl = document.getElementById('collisionWarn');
   var radioBtn = document.getElementById('radioBtn');
   var radioMsgsEl = document.getElementById('radioMsgs');
+  var radioLabelEl = document.getElementById('radioLabel');
   var killCountEl = document.getElementById('killCount');
   var fireBtn = document.getElementById('fire');
   var hudEl = document.getElementById('hud');
   var infoBtn = document.getElementById('infoBtn');
+  var bgmBtn = document.getElementById('bgmBtn');
+  var bgmPlaying = false;
+  bgmBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    initAudio(); resumeAudio();
+    if (bgmPlaying) {
+      stopBgm();
+      bgmPlaying = false;
+      bgmBtn.classList.remove('playing');
+    } else {
+      startBgm();
+      bgmPlaying = true;
+      bgmBtn.classList.add('playing');
+    }
+  });
+  var wreckWarnEl = document.getElementById('wreckWarn');
+  var capsulePromptEl = document.getElementById('capsulePrompt');
+  var capsuleOverlayEl = document.getElementById('capsuleOverlay');
+  var capsuleBodyEl = document.getElementById('capsuleBody');
   var infoPanel = document.getElementById('infoPanel');
-  var briefBtn = document.getElementById('briefBtn');
-  var briefPanel = document.getElementById('briefPanel');
   var helpPanel = document.getElementById('helpPanel');
   var helpBtn = document.getElementById('helpBtn');
   var boardingOverlay = document.getElementById('boardingOverlay');
   var boardingFill = document.getElementById('boardingFill');
   var boardingThumb = document.getElementById('boardingThumb');
+  var escortRepairOverlay = document.getElementById('escortRepairOverlay');
+  var erFill = document.getElementById('erFill');
+  var erThumb = document.getElementById('erThumb');
   var modeSlider = document.getElementById('modeSlider');
   var modeWrap = document.getElementById('modeWrap');
   var modeFill = document.getElementById('modeFill');
@@ -1545,7 +1809,30 @@
     '自动空情信标为您播报最新的进出港排队位次……',
     '长崎素世是我的妈妈',
     '嘟嘟嘟嘟嘟嘟—滴滴滴—滴滴—滴滴',
-    '一段异常嘈杂的音乐，谁唱歌忘关无线电了'
+    '一段异常嘈杂的音乐，谁唱歌忘关无线电了',
+    'L039星门进港队列已更新，请各舰按排序位依次进近，勿抢占航路',
+    '静海前哨站空域为军事管理区，民用舰船请依规绕行',
+    '我舰KX77拖带三艘无动力驳船，转向半径大，请从我右舷宽阔一侧通过',
+    '洞幺洞拐……收到请回答……',
+    '尼古喵喵出到第几集了哥们，我船上没网啥都看不了',
+    '交管呼勤务325，午间航路预报和值班表发给你了，收到回复',
+    '补给站餐厅今日特供合成蛋白咖喱，辣度可选，凭海员证第二份半价',
+    '为什么要演奏春日影',
+    '？！冰冰？！',
+    '自动空情信标提醒您，本空域引力潮汐活跃，大型舰船请保持安全航速，避免尾流影响小型艇。',
+    '[Mygo表情包_那我呢？]',
+    '【猎户座文旅】欢迎来到太阳系最大的星际交通枢纽—L039星门，这里是领略太阳系边境风情的最好去处，更多资讯请关注我们的频道',
+    '咖喱南池的钥匙，千万别去给他们送钱，哪怕第二份半价也难吃',
+    '自动空情信标提醒您，六号进港航路02段有货物漂散，已呼叫勤务处置，各舰注意避让',
+    '有看见没静海前哨那新来个大白船，好像是从木卫二过来的新航母',
+    'RT06你舰已进入我空间站防空识别区，请表明来意',
+    'YJ08呼港务YJ08呼港务，我舰侧推动力不足，请调拖船协助靠泊',
+    '刚从咖啡回来，里边人手一台笔记本，我问服务员，我的呢？服务员说那是人家自己带的',
+    '到底是谁在爱喝港区的咖啡，喝这个还不如喝防冻液加点机油',
+    '哥们好骂',
+    '不开应答机cos减速带的来',
+    '堵桥来',
+    '交管郑重提示您公频是重要的海事信息频段，禁止发送无关信息，禁止议论港区餐饮服务。',
   ];
   var radio = {
     on: false,
@@ -1554,8 +1841,9 @@
     nextDelay: 5 + Math.random() * 3
   };
   function addRadioMsg(text, ttl) {
-    radio.msgs.unshift({ text: text, ttl: ttl || 6 });
+    radio.msgs.unshift({ text: text, ttl: ttl || 6, duty: true });
     if (radio.msgs.length > 2) radio.msgs.pop();
+    renderRadio();
   }
 
   var SWITCH_COOLDOWN = 2.0;              // 档位切换冷却 s
@@ -1679,7 +1967,7 @@
     bell.switchCd = 0;
     updateBellUI();
     // 无线电提示
-    radio.msgs.push({ text: '勤务325请进L039星门0721补给站泊位修整，你也可以驶入中央信标维修区对接', ttl: 10 });
+    radio.msgs.push({  text: '勤务325请进L039星门0721补给站泊位修整，你也可以驶入中央信标维修区对接', ttl: 10, duty: true });
     if (radio.msgs.length > 2) radio.msgs.shift();
     renderRadio();
   }
@@ -1708,6 +1996,10 @@
 
   /* ===================== 空间站与勤务任务系统 ===================== */
   var STATION = { x: 20600, y: 12400, radius: 140, coreR: 40, ringR: 140, ringW: 18 };
+  // 0721港务交通艇（橙色小而胖等腰梯形，绕站环行，独立模型，非商船/驳船）
+  var harborBoat = { ang: Math.random() * Math.PI * 2, radius: 140 + 120, w: 0.22 };
+  // 静海军事站港务交通艇（同款橙色胖梯形，绕军事站外环航行）
+  var milBoat = { ang: Math.random() * Math.PI * 2, radius: 950, w: 0.16 };
   // 靠泊区：空间站右侧绿色矩形，宽=2倍舰宽(60)，长=2倍舰长(112)
   var DOCK_ZONE = { cx: 20600 + 140 + 20 + 56, cy: 12400, halfL: 56, halfW: 30 };
   // 建设中的框架空间站（0722燃料站）：主站左侧1800单位
@@ -1738,15 +2030,344 @@
     size: 'huge'
   };
   // 军事空间站6个普通泊位（上、下、左，每端2个）
-  var MIL_BERTHS = [
-    { x: MIL_STATION.x - 471, y: MIL_STATION.y - 35, halfL: 56, halfW: 30, vertical: false },
-    { x: MIL_STATION.x - 471, y: MIL_STATION.y + 35, halfL: 56, halfW: 30, vertical: false },
-    { x: MIL_STATION.x - 35, y: MIL_STATION.y + 471, halfL: 30, halfW: 56, vertical: true },
-    { x: MIL_STATION.x + 35, y: MIL_STATION.y + 471, halfL: 30, halfW: 56, vertical: true },
-    { x: MIL_STATION.x - 35, y: MIL_STATION.y - 471, halfL: 30, halfW: 56, vertical: true },
-    { x: MIL_STATION.x + 35, y: MIL_STATION.y - 471, halfL: 30, halfW: 56, vertical: true }
+  // 对空警戒雷达平台（主站左上、超出管制圈；最后一个附属建筑，不设碰撞）
+  var RADAR = { x: 48870, y: 29870, baseR: 30, mastH: 46, sweepR: 420 };
+  // 废弃空间站（地图左下角；复用0721构型放大30%，静止灰色无灯，无碰撞，仅探索地标）
+  var WRECK = { x: 6500, y: 30000, scale: 1.3, ringR: 140 * 1.3, coreR: 40 * 1.3, ringW: 18 };
+  // 公牛5号矿业平台（右上角，小行星采矿基地，无碰撞不旋转）
+  var ASTEROID_STATION = { x: 50500, y: 5200, baseR: 220, name: '公牛5号矿业平台', rot: 0 };
+  (function () {
+    var seed = 7355608;
+    function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    // 不规则多边形本体：9顶点
+    var verts = [];
+    var n = 9;
+    for (var i = 0; i < n; i++) {
+      var ang = (i / n) * Math.PI * 2 + (rnd() - 0.5) * 0.35;
+      var r = ASTEROID_STATION.baseR * (0.72 + rnd() * 0.42);
+      verts.push({ x: Math.cos(ang) * r, y: Math.sin(ang) * r });
+    }
+    ASTEROID_STATION.verts = verts;
+    // 6条非对称栈桥
+    var piers = [];
+    for (var i = 0; i < 6; i++) {
+      var pang = (i / 6) * Math.PI * 2 + (rnd() - 0.5) * 0.55;
+      var plen = 140 + rnd() * 210;
+      var pwid = 26 + rnd() * 18;
+      var startR = 0;
+      for (var j = 0; j < verts.length; j++) {
+        var va = Math.atan2(verts[j].y, verts[j].x);
+        var diff = Math.abs(va - pang);
+        while (diff > Math.PI) diff = Math.abs(diff - Math.PI * 2);
+        if (diff < 0.42) {
+          var vr = Math.hypot(verts[j].x, verts[j].y);
+          if (vr > startR) startR = vr;
+        }
+      }
+      piers.push({
+        angle: pang,
+        startR: startR * 0.9,
+        length: plen,
+        width: pwid,
+        endBlock: rnd() > 0.35,
+        blockSize: 18 + rnd() * 16,
+        notch: rnd() > 0.45
+      });
+    }
+    ASTEROID_STATION.piers = piers;
+    // 红色闪烁航标灯：仅栈桥末端2颗（删除中央灯）
+    ASTEROID_STATION.lights = [
+      { pier: 0, phase: 1.2 },
+      { pier: 3, phase: 2.7 }
+    ];
+    // 层次感：陨石坑×3（深灰不规则多边形）
+    var craters = [];
+    for (var ci = 0; ci < 3; ci++) {
+      var cang = rnd() * Math.PI * 2;
+      var cdist = rnd() * ASTEROID_STATION.baseR * 0.55;
+      var cx = Math.cos(cang) * cdist, cy = Math.sin(cang) * cdist;
+      var cr = 18 + rnd() * 28;
+      var cv = [];
+      var cn = 6 + Math.floor(rnd() * 3);
+      for (var ck = 0; ck < cn; ck++) {
+        var ka = (ck / cn) * Math.PI * 2 + (rnd() - 0.5) * 0.5;
+        var kr = cr * (0.65 + rnd() * 0.5);
+        cv.push({ x: cx + Math.cos(ka) * kr, y: cy + Math.sin(ka) * kr });
+      }
+      craters.push({ verts: cv });
+    }
+    ASTEROID_STATION.craters = craters;
+    // 层次感：采矿面×1（橘黄矩形，比栈桥暗）
+    ASTEROID_STATION.miningFaces = [{ x: -80, y: 100, w: 46, h: 18, angle: 0.4 }];
+    // 6个普通泊位（橘黄色，参数同0721：halfL=56 halfW=30）
+    // 4个在栈桥末端，2个在本体边缘；固定4个被占用
+    var _dockPiers = [0, 1, 3, 4];  // 栈桥末端泊位
+    var _docks = [];
+    var _bargeSizes = ['medium', 'small', 'medium', 'small'];
+    var _shipTypes = ['barge', 'miner', 'engineer'];
+    var _dockModels = { barge: BARGE_LIB, miner: [{name: '采矿作业船'}], engineer: [{name: '工程支援船'}] };
+    for (var _di = 0; _di < _dockPiers.length; _di++) {
+      var _dp = piers[_dockPiers[_di]];
+      var _dend = _dp.startR + _dp.length;
+      var _stype = _shipTypes[Math.floor(rnd() * _shipTypes.length)];
+      var _mlib = _dockModels[_stype];
+      _docks.push({
+        cx: Math.cos(_dp.angle) * (_dend + 65),
+        cy: Math.sin(_dp.angle) * (_dend + 65),
+        angle: _dp.angle,
+        halfL: 56, halfW: 30,
+        occupied: _di < 3,
+        bargeSize: _bargeSizes[_di],
+        shipType: _stype,
+        callsign: _di < 3 ? genCallsign() : '',
+        model: _di < 3 ? _mlib[Math.floor(rnd() * _mlib.length)].name : ''
+      });
+    }
+    // 本体上下边缘2个泊位
+    _docks.push({ cx: 0, cy: -ASTEROID_STATION.baseR - 50, angle: 0, halfL: 56, halfW: 30, occupied: true, bargeSize: 'small', shipType: 'barge', callsign: genCallsign(), model: 'mls小型无人驳船' });
+    _docks.push({ cx: 0, cy: ASTEROID_STATION.baseR + 160, angle: Math.PI / 2, halfL: 56, halfW: 30, occupied: false, bargeSize: 'medium' });
+    ASTEROID_STATION.docks = _docks;
+    // 集装箱货场（6-10个小方块，橘黄/深灰，静态）
+    var _containers = [];
+    var _cn = 7 + Math.floor(rnd() * 3);
+    for (var _ci = 0; _ci < _cn; _ci++) {
+      var _cang = rnd() * Math.PI * 2;
+      var _cdist = rnd() * ASTEROID_STATION.baseR * 0.5;
+      _containers.push({
+        x: Math.cos(_cang) * _cdist,
+        y: Math.sin(_cang) * _cdist,
+        w: 12 + rnd() * 8,
+        h: 10 + rnd() * 6,
+        angle: rnd() * Math.PI,
+        color: rnd() > 0.5 ? '#c48430' : '#55585e'
+      });
+    }
+    ASTEROID_STATION.containers = _containers;
+    // 采矿碎屑粒子（12个，在采矿面位置飘出）
+    var _debris = [];
+    for (var _di = 0; _di < 12; _di++) {
+      _debris.push({
+        x: -80 + (rnd() - 0.5) * 20,
+        y: 100 + (rnd() - 0.5) * 10,
+        vx: (rnd() - 0.5) * 12,
+        vy: 15 + rnd() * 20,
+        life: rnd() * 2,
+        maxLife: 1.5 + rnd() * 1.5
+      });
+    }
+    ASTEROID_STATION.debris = _debris;
+    // 栈桥警示灯（每条栈桥两侧各2个）
+    for (var _wpi = 0; _wpi < piers.length; _wpi++) {
+      piers[_wpi].warnLights = [
+        { off: 0.35, side: -1 }, { off: 0.65, side: -1 },
+        { off: 0.35, side: 1 }, { off: 0.65, side: 1 }
+      ];
+    }
+  })();
+
+  // 公牛5号附属小行星（主站周围，体积一半，单栈桥）
+  var ASTEROID_SAT = { x: 50500 + 720, y: 5200 + 460, baseR: 110, name: '公牛5号附属矿岩' };
+  // 公牛5号港务艇（主站↔附属站往返，橘黄色，2条）
+  var astTenders = [
+    { t: 0.0, speed: 0.18 },
+    { t: 0.5, speed: 0.15 }
   ];
+  // 公牛5号矿业平台专属无线电
+  var AST_RADIO = [
+    'M-77已离泊，下一班预计40分钟后靠泊3号指廊',
+    '高高兴兴上班，平平安安回家',
+    '货场吊机正在吊运高位重货，下方禁止穿行',
+    '安全第一记心间，预防为主守底线',
+    '安全源于谨慎，事故出于麻痹'
+  ];
+  var astRadioTimer = 0;
+  var astDrones = [];
+  for (var _dri = 0; _dri < 4; _dri++) {
+    astDrones.push({
+      angle: Math.random() * Math.PI * 2,
+      radius: 35 + Math.random() * 35,
+      speed: 0.3 + Math.random() * 0.4,
+      size: 3 + Math.random() * 2
+    });
+  }
+  var astCrane = { x: 70, y: -90, angle: 0, len: 55 };
+  (function () {
+    var seed = 9527;
+    function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    var verts = [];
+    var n = 7;
+    for (var i = 0; i < n; i++) {
+      var ang = (i / n) * Math.PI * 2 + (rnd() - 0.5) * 0.4;
+      var r = ASTEROID_SAT.baseR * (0.7 + rnd() * 0.45);
+      verts.push({ x: Math.cos(ang) * r, y: Math.sin(ang) * r });
+    }
+    ASTEROID_SAT.verts = verts;
+    // 单条栈桥
+    var pang = -0.6;  // 朝向左上方
+    var startR = 0;
+    for (var j = 0; j < verts.length; j++) {
+      var va = Math.atan2(verts[j].y, verts[j].x);
+      var diff = Math.abs(va - pang);
+      while (diff > Math.PI) diff = Math.abs(diff - Math.PI * 2);
+      if (diff < 0.5) {
+        var vr = Math.hypot(verts[j].x, verts[j].y);
+        if (vr > startR) startR = vr;
+      }
+    }
+    ASTEROID_SAT.piers = [{
+      angle: pang,
+      startR: startR * 0.9,
+      length: 120,
+      width: 24,
+      endBlock: true,
+      blockSize: 16,
+      notch: false
+    }];
+    // 栈桥上一颗航标灯
+    ASTEROID_SAT.lights = [{ pier: 0, phase: 0.5 }];
+    // 附属站：1个小陨石坑
+    var satCr = 12 + rnd() * 10;
+    var satCv = [];
+    for (var sk = 0; sk < 6; sk++) {
+      var sa = (sk / 6) * Math.PI * 2;
+      satCv.push({ x: 20 + Math.cos(sa) * satCr, y: -10 + Math.sin(sa) * satCr });
+    }
+    ASTEROID_SAT.craters = [{ verts: satCv }];
+    ASTEROID_SAT.miningFaces = [];
+  })();
+  // 废弃站旁红色警告信标（小判定圈，仅文字警示，不禁火/不加力限制）
+  var WRECK_BEACON = { x: WRECK.x + 330, y: WRECK.y - 140, radius: 430 };
+    var wreckage = [];
+  var astSatCargos = [];  // 矿业平台附属站附近的橙色货箱（静态、有碰撞、不可摧毁）
+  // 0721补给站氛围元素
+  var stationDebris = [];       // 漂浮杂物
+  var shipTrail = [];           // 飞船航行尾迹粒子
+  var shootingStars = [];       // 流星
+  var shootingStarTimer = 20;   // 流星生成计时
+  var stationShuttle = { state: 'docked', x: 0, y: 0, angle: 0, tx: 0, ty: 0, timer: 0 }; // 0721交通艇
+  var stationDrydock = { x: 21200, y: 13000, ringR: 90, coreR: 28 };  // 附属干船坞
+  var stationIllegal = [];      // 违章停泊船
+  var stationSign = { x: 20600 - 100, y: 12400 - 160, on: true };  // 广告灯牌
+  var stHumOsc = null, stHumSub = null, stHumGain = null, stHumFilter = null, stHumRunning = false;                 // 环绕残骸（建筑垃圾/陨石）：原地自转、有碰撞、不锁定不计数
+  var wreckRadioPlayed = false;      // 靠近废弃站专属无线电是否已播
+  var capsuleRead = false;           // 时空胶囊是否已阅读（一次性）
+  var capsulePromptVisible = false;  // 是否正显示“金属片”交互提示
+  var WRECK_RADIO = [
+    '碰撞预警信标提醒您嘟嘟嘟 减速 嘟嘟嘟 减速',
+    '无线电一片沉默，只有背景杂音和信标的嘟嘟声',
+    '嘟嘟嘟 嘟嘟嘟 嘟嘟嘟'
+  ];
+  var CAPSULE_TEXT = '右舷发现一片看起来在空间中漂泊了很久的镀金铝合金片，布满划痕和凹陷，通过它古老的材质和落后的工艺判断，应该是太阳系大开发时期的产物。\n\n以下是将其回收后，扫描出还可辨认的文字，主要集中在正文部分：\n\n我们的时代是很有趣的，想必你们的时代也很有趣吧。我们现在还在建设太阳系，比邻星还是遥不可及的光点，你们应该已经生活在银河系中了吧。\n我们相信，你们已经漂亮地改造了火星地表，探索木星的卫星们，开拓了太阳系最荒凉的边界，前往比邻星系，不断地向着宇宙进发。\n太空船是不是已经冲出了银河系了呢？\n是不是已经和其他行星文明的代表们进行了对科学和文化合作的交涉了呢？\n你们大概过着比我们更好的生活，在银河系建功立业，让地球变得更美丽了吧。\n很羡慕你们能够享受跨星系航行的便利，但我知道你们也会羡慕我们这些一直忙碌的年轻一代。\n我们有着明确的目标、光明的未来，以及无数想要做的事情。我们的技能、智力、思想、能量，都有用武之地。\n\n时空胶囊一般有坚实的金属外壳，以保护内部刻字的金属板。这个胶囊的外壳不知为什么不见了，内部的金属板和建筑垃圾一同漂浮在废弃空间站周围。';
+  var MIL_BERTHS = [
+    { x: MIL_STATION.x - 471, y: MIL_STATION.y - 35, halfL: 56, halfW: 30, vertical: false, label: 'B-1' },
+    { x: MIL_STATION.x - 471, y: MIL_STATION.y + 35, halfL: 56, halfW: 30, vertical: false, label: 'B-2' },
+    { x: MIL_STATION.x - 35, y: MIL_STATION.y + 471, halfL: 30, halfW: 56, vertical: true, label: 'B-3' },
+    { x: MIL_STATION.x + 35, y: MIL_STATION.y + 471, halfL: 30, halfW: 56, vertical: true, label: 'B-4' },
+    { x: MIL_STATION.x - 35, y: MIL_STATION.y - 471, halfL: 30, halfW: 56, vertical: true, label: 'B-5' },
+    { x: MIL_STATION.x + 35, y: MIL_STATION.y - 471, halfL: 30, halfW: 56, vertical: true, label: 'B-6' },
+    // 附属空间站下方4个普通泊位（竖向并排，可靠泊并触发同一军事站菜单）
+    { x: MIL_SUB.x - 112, y: MIL_SUB.y + 195, halfL: 30, halfW: 56, vertical: true, label: 'S-1' },
+    { x: MIL_SUB.x - 37,  y: MIL_SUB.y + 195, halfL: 30, halfW: 56, vertical: true, label: 'S-2' },
+    { x: MIL_SUB.x + 37,  y: MIL_SUB.y + 195, halfL: 30, halfW: 56, vertical: true, label: 'S-3' },
+    { x: MIL_SUB.x + 112, y: MIL_SUB.y + 195, halfL: 30, halfW: 56, vertical: true, label: 'S-4' },
+    // 雷达平台左侧2个普通泊位（横向，可靠泊并触发同一军事站菜单）
+    { x: RADAR.x - 120, y: RADAR.y - 35, halfL: 56, halfW: 30, vertical: false, label: 'R-1' },
+    { x: RADAR.x - 120, y: RADAR.y + 35, halfL: 56, halfW: 30, vertical: false, label: 'R-2' }
+  ];
+  // 玩家是否正朝某泊位对正进近（ILS 判定）
+  function berthAlign(b) {
+    var dx = b.x - ship.x, dy = b.y - ship.y, d = Math.hypot(dx, dy);
+    if (d > 230 || d < 1) return false;
+    var tvx = Math.cos(ship.angle) * ship.speed, tvy = Math.sin(ship.angle) * ship.speed;
+    var sp = Math.hypot(tvx, tvy);
+    if (sp < 5) return false;
+    return (tvx * dx + tvy * dy) / (sp * d) > 0.5;
+  }
+  // 占用泊位内静态停泊的极简小船（只绘制，不参与逻辑）
+  function drawParkedShip(bx, by, vertical) {
+    ctx.save();
+    ctx.translate(bx, by);
+    if (vertical) ctx.rotate(Math.PI / 2);
+    ctx.fillStyle = 'rgba(180,190,185,0.85)';
+    ctx.beginPath();
+    ctx.moveTo(20, 0); ctx.lineTo(10, -9); ctx.lineTo(-20, -9);
+    ctx.lineTo(-20, 9); ctx.lineTo(10, 9); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(150,160,155,0.9)';
+    ctx.fillRect(-8, -5, 14, 10);
+    ctx.restore();
+  }
+  // 统一绘制一个普通军事泊位（ox/oy为当前已translate的坐标系原点世界坐标）
+  function drawMilBerth(b, ox, oy, t) {
+    var bx = b.x - ox, by = b.y - oy, bL = 56, bW = 30;
+    var aligned = !b.occupied && berthAlign(b);
+    var pulse = aligned ? 1 : (0.5 + 0.5 * Math.sin(t * 2 + bx * 0.01 + by * 0.01));
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(b.vertical ? Math.PI / 2 : 0);
+    ctx.fillStyle = b.occupied ? 'rgba(150,150,150,0.07)' : 'rgba(120,180,255,' + (aligned ? 0.13 : (0.06 + 0.03 * pulse)) + ')';
+    ctx.fillRect(-bL, -bW, bL * 2, bW * 2);
+    ctx.strokeStyle = b.occupied ? 'rgba(160,160,160,0.45)' : 'rgba(120,180,255,' + (aligned ? 0.9 : (0.4 + 0.2 * pulse)) + ')';
+    ctx.lineWidth = 1.5 / cam.zoom;
+    ctx.setLineDash([8 / cam.zoom, 6 / cam.zoom]);
+    ctx.strokeRect(-bL, -bW, bL * 2, bW * 2);
+    ctx.setLineDash([]);
+    ctx.strokeStyle = b.occupied ? 'rgba(160,160,160,0.2)' : 'rgba(120,180,255,' + (aligned ? 0.5 : (0.2 + 0.1 * pulse)) + ')';
+    ctx.lineWidth = 1 / cam.zoom;
+    ctx.beginPath(); ctx.moveTo(-bL, 0); ctx.lineTo(bL, 0); ctx.stroke();
+    ctx.restore();
+    // 泊位编号（水平可读）
+    ctx.fillStyle = b.occupied ? 'rgba(190,190,190,0.8)' : 'rgba(150,200,255,0.72)';
+    ctx.font = (10 / cam.zoom) + 'px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(b.label + (b.occupied ? ' 占用' : ''), bx, by - bW - 8 / cam.zoom);
+    // 占用静态小船
+    if (b.occupied) drawParkedShip(bx, by, b.vertical);
+    // ILS 近进灯：沿长轴外侧5盏，对正常亮、占用灰暗、其余呼吸闪烁
+    var outX = 0, outY = 0;
+    if (!b.vertical) outX = bx >= 0 ? 1 : -1;
+    else outY = by >= 0 ? 1 : -1;
+    for (var li = 0; li < 5; li++) {
+      var ld = bL + 25 + li * 35;
+      var lx = bx + outX * ld, ly = by + outY * ld;
+      var lp = aligned ? 1 : (b.occupied ? 0.25 : (0.5 + 0.5 * Math.sin(t * 3 + li * 0.6)));
+      ctx.fillStyle = b.occupied ? 'rgba(150,150,150,' + (0.18 + 0.1 * lp) + ')'
+                                 : 'rgba(120,180,255,' + (aligned ? 0.5 : (0.25 + 0.15 * lp)) + ')';
+      ctx.beginPath(); ctx.arc(lx, ly, aligned ? 5.5 : (4 + 1.5 * lp), 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = b.occupied ? 'rgba(200,200,200,0.5)' : 'rgba(180,210,255,' + (aligned ? 0.95 : (0.5 + 0.3 * lp)) + ')';
+      ctx.beginPath(); ctx.arc(lx, ly, 1.2 / cam.zoom, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // 附属站泊位局部布局（相对附属站中心，供绘制；与上面世界坐标判定一一对应）
+  var SUB_NORMAL_BERTHS = [ { x: -112, y: 195 }, { x: -37, y: 195 }, { x: 37, y: 195 }, { x: 112, y: 195 } ];
+  var SUB_BIG_BERTH = { x: 0, y: -195 }; // 附属站上方1个巨型泊位（横向，仅视觉，不可靠泊）
+  // 静海强管制区：圆心取军事站与附属站中点，半径覆盖两站全部泊位并略外扩
+  var MIL_CONTROL = { x: (MIL_STATION.x + MIL_SUB.x) / 2, y: (MIL_STATION.y + MIL_SUB.y) / 2, r: 1300 };
+  function inControlZone(x, y) { return Math.hypot(x - MIL_CONTROL.x, y - MIL_CONTROL.y) < MIL_CONTROL.r; }
+  // 随机占用1~2个普通泊位（停静态小船，营造繁忙；占用泊位不可靠泊）
+  (function initOccupiedBerths() {
+    var occN = 1 + Math.floor(Math.random() * 2);
+    var order = [];
+    for (var ii = 0; ii < MIL_BERTHS.length; ii++) order.push(ii);
+    for (var kk = order.length - 1; kk > 0; kk--) {
+      var jj = Math.floor(Math.random() * (kk + 1));
+      var tt = order[kk]; order[kk] = order[jj]; order[jj] = tt;
+    }
+    for (var oo = 0; oo < occN && oo < order.length; oo++) {
+      MIL_BERTHS[order[oo]].occupied = MERCHANT_LIB[Math.floor(Math.random() * MERCHANT_LIB.length)].name;
+    }
+  })();
+  // 军事站附近随机管制通播
+  var MIL_RADIO = [
+    '0831例行巡逻编队离港，注意避让',
+    '我站4-6指廊正在维护，如需通行请提交签注单',
+    '请远泊位舰艇注意，本站禁止未申报的火控雷达测试'
+  ];
+  var controlInside = false, controlNoticeTimer = 0, milRadioShown = false;
   var milDocked = false;
+  var astDocked = false;
+  var astDockIdx = -1;
+  var cargoState = 'none';  // none / towing / done
+  var cargoNotifyT = 0;
   var station2Barges = [];  // 泊位中固定的3艘静止驳船
   var station2Meteors = []; // 框架站附近的货箱小行星（不计入总量上限）
   var station2Engines = []; // 框架站附近的工程船
@@ -1759,6 +2380,7 @@
   var suspiciousState = 'none'; // none / roaming / stopped / boarding / towing / done
   var towShip = null;
   var boardingSlider = { active: false, progress: 0, dragging: false, startX: 0 };
+  var escortRepairSlider = { active: false, progress: 0, dragging: false, startX: 0 };
   var boardingBlackTimer = 0;
   var handoverBlackTimer = 0;
   /* 救援船只 */
@@ -1811,7 +2433,7 @@
       tx = 2000 + Math.random() * (MAP.w - 4000);
       ty = 2000 + Math.random() * (MAP.h - 4000);
       tries++;
-    } while (tries < 20 && Math.hypot(tx - STATION.x, ty - STATION.y) < 8000);
+    } while (tries < 20 && (Math.hypot(tx - STATION.x, ty - STATION.y) < 8000 || inControlZone(tx, ty)));
     return { x: tx, y: ty };
   }
 
@@ -1830,7 +2452,7 @@
       angle: spawnAngle,
       model: model.name, size: model.size, len: dim.len, wid: dim.wid,
       callsign: genCallsign(),
-      speed: 60 + Math.random() * 30,
+      speed: 0,  // 出生静止，5秒后开始加速
       wx: pt.x, wy: pt.y,
       homeX: STATION.x, homeY: STATION.y,
       phase: Math.random() * 100,
@@ -1844,10 +2466,21 @@
       targetX: pt.x, targetY: pt.y,
       escortShip: escort,
       desc: '护航 ' + escort.callsign + ' 至目的地',
-      delivered: false
+      delivered: false,
+      escortRadius: 290,          // 判定圈（求救船180的1.6倍）
+      outTimer: 0,                // 出圈累计时间
+      outWarned: false,           // 出圈警告是否已播
+      eventTimer: 0,              // 事件计时
+      eventDelay: 15 + Math.random() * 45,  // 生成10秒后15-60秒触发
+      eventTriggered: false,      // 事件是否已触发
+      eventType: null,            // 'fault' / 'reroute'
+      faultState: null,           // null / 'waiting' / 'recovering'
+      faultRecoverTimer: 0,
+      baseSpeed: 180 + Math.random() * 20,  // 目标巡航速度（稍慢于玩家前进一230）
+      spawnTimer: 0  // 出生后计时，5秒后才开始加速
     };
     // 无线电文本
-    radio.msgs.push({ text: '我舰呼号勤务325为你舰护航，收到回复', ttl: 6 });
+    radio.msgs.push({  text: '我舰呼号勤务325为你舰护航，收到回复', ttl: 6, duty: true });
     if (radio.msgs.length > 2) radio.msgs.shift();
     renderRadio();
     updateTaskButtons();
@@ -1867,7 +2500,7 @@
       delivered: false
     };
     if (isSpecial) {
-      radio.msgs.push({ text: '这班是超重矿石，请您注意瞭望谨慎驾驶，祝您一路平安', ttl: 6 });
+      radio.msgs.push({  text: '这班是超重矿石，请您注意瞭望谨慎驾驶，祝您一路平安', ttl: 6, duty: true });
       if (radio.msgs.length > 2) radio.msgs.shift();
       renderRadio();
     }
@@ -1899,13 +2532,18 @@
     if (!currentTask) return;
     tasksCompleted++;
     // 无线电祝贺
-    radio.msgs.push({ text: '交管：' + currentTask.desc + ' 已确认完成，干得漂亮。', ttl: 6 });
+    radio.msgs.push({  text: '交管：' + currentTask.desc + ' 已确认完成，干得漂亮。', ttl: 6, duty: true });
     if (radio.msgs.length > 2) radio.msgs.shift();
     renderRadio();
     // 移除被护航商船
     if (currentTask.type === 'escort' && currentTask.escortShip) {
       var idx = merchants.indexOf(currentTask.escortShip);
       if (idx >= 0) merchants.splice(idx, 1);
+    }
+    if (escortRepairSlider && escortRepairSlider.active) {
+      escortRepairSlider.active = false;
+      escortRepairSlider.progress = 0;
+      if (escortRepairOverlay) escortRepairOverlay.classList.add('hidden');
     }
     currentTask = null;
     updateTaskButtons();
@@ -1927,25 +2565,98 @@
     taskTextEl.classList.add('show');
 
     if (currentTask.type === 'escort') {
+      var es = currentTask.escortShip;
       // 护航：商船被摧毁则任务失败
-      if (!currentTask.escortShip || currentTask.escortShip.hp <= 0) {
-        if (currentTask.escortShip && currentTask.escortShip.hp <= 0) {
-          // 货箱小行星击毁动画
-          spawnExplosion({ x: currentTask.escortShip.x, y: currentTask.escortShip.y, type: 'cargo', rx: 20, ry: 14, explode: true });
-          radio.msgs.push({ text: '交管：护航目标已损毁，任务失败。', ttl: 6 });
+      if (!es || es.hp <= 0) {
+        if (es && es.hp <= 0) {
+          spawnExplosion({ x: es.x, y: es.y, type: 'cargo', rx: 20, ry: 14, explode: true });
+          radio.msgs.push({  text: '已上传日志，等待下一步指示', ttl: 6, color: '#ff6060', duty: true });
           if (radio.msgs.length > 2) radio.msgs.shift();
           renderRadio();
-          var idx = merchants.indexOf(currentTask.escortShip);
+          var idx = merchants.indexOf(es);
           if (idx >= 0) merchants.splice(idx, 1);
         }
+        if (escortRepairSlider.active) { escortRepairSlider.active = false; escortRepairOverlay.classList.add('hidden'); }
         currentTask = null;
         updateTaskButtons();
         return;
       }
+      // 判定圈：玩家出圈超过8秒则任务失败
+      var pdx = ship.x - es.x, pdy = ship.y - es.y;
+      var pdist = Math.hypot(pdx, pdy);
+      if (pdist > currentTask.escortRadius) {
+        currentTask.outTimer += dt;
+        if (!currentTask.outWarned) {
+          currentTask.outWarned = true;
+          radio.msgs.push({  text: '护航目标脱离可视范围，请保持距离', ttl: 6, duty: true });
+          if (radio.msgs.length > 2) radio.msgs.shift();
+          renderRadio();
+        }
+        if (currentTask.outTimer > 8) {
+          radio.msgs.push({  text: '已上传日志，等待下一步指示', ttl: 6, color: '#ff6060', duty: true });
+          if (radio.msgs.length > 2) radio.msgs.shift();
+          renderRadio();
+          var idx2 = merchants.indexOf(es);
+          if (idx2 >= 0) merchants.splice(idx2, 1);
+          currentTask = null;
+          updateTaskButtons();
+          return;
+        }
+      } else {
+        currentTask.outTimer = 0;
+        currentTask.outWarned = false;
+      }
+      // 随机事件：生成10秒后，15-60秒延迟，30%概率，距目的地>2000才触发
+      if (!currentTask.eventTriggered) {
+        currentTask.eventTimer += dt;
+        var distToDest = Math.hypot(es.x - currentTask.targetX, es.y - currentTask.targetY);
+        if (currentTask.eventTimer > 10 + currentTask.eventDelay && distToDest > 2000) {
+          currentTask.eventTriggered = true;
+          if (Math.random() < 0.3) {
+            if (Math.random() < 0.5) {
+              // 事件1：商船故障停船
+              currentTask.eventType = 'fault';
+              currentTask.faultState = 'waiting';
+              es.speed = 0;
+              radio.msgs.push({  text: '护航目标动力故障，正在进一步联络', ttl: 6, duty: true });
+              if (radio.msgs.length > 2) radio.msgs.shift();
+              renderRadio();
+            } else {
+              // 事件2：目的地临时更改
+              currentTask.eventType = 'reroute';
+              var npt = randomTaskPoint();
+              currentTask.targetX = npt.x;
+              currentTask.targetY = npt.y;
+              es.wx = npt.x;
+              es.wy = npt.y;
+              radio.msgs.push({  text: '勤务325请抄收最新的护航目的地', ttl: 6, duty: true });
+              if (radio.msgs.length > 2) radio.msgs.shift();
+              renderRadio();
+            }
+          }
+        }
+      }
+      // 故障状态处理
+      if (currentTask.faultState === 'waiting') {
+        // 玩家在判定圈内且停船 → 显示维修滑块
+        if (pdist <= currentTask.escortRadius && Math.abs(ship.speed) < 10 && !escortRepairSlider.active) {
+          escortRepairSlider.active = true;
+          escortRepairSlider.progress = 0;
+        }
+      } else if (currentTask.faultState === 'recovering') {
+        currentTask.faultRecoverTimer -= dt;
+        // 缓慢加速恢复
+        es.speed = Math.min(currentTask.baseSpeed, es.speed + currentTask.baseSpeed * dt * 0.5);
+        if (currentTask.faultRecoverTimer <= 0) {
+          es.speed = currentTask.baseSpeed;
+          currentTask.faultState = null;
+        }
+      }
       // 商船到达目的地即完成
-      var edx = currentTask.escortShip.x - currentTask.targetX;
-      var edy = currentTask.escortShip.y - currentTask.targetY;
+      var edx = es.x - currentTask.targetX;
+      var edy = es.y - currentTask.targetY;
       if (Math.hypot(edx, edy) < 300) {
+        if (escortRepairSlider.active) { escortRepairSlider.active = false; escortRepairOverlay.classList.add('hidden'); }
         completeTask();
         return;
       }
@@ -1958,7 +2669,7 @@
           if (currentTask.waitTimer >= 5) {
             currentTask.delivered = true;
             currentTask.tempBeacon = null;
-            radio.msgs.push({ text: '已上传电子回执单至空间站', ttl: 6 });
+            radio.msgs.push({  text: '已上传电子回执单至空间站', ttl: 6, duty: true });
             if (radio.msgs.length > 2) radio.msgs.shift();
             renderRadio();
             completeTask();
@@ -2055,7 +2766,7 @@
     var s2dist = Math.hypot(ship.x - STATION2.x, ship.y - STATION2.y);
     if (s2dist < 1200 && !station2MsgShown) {
       station2MsgShown = true;
-      radio.msgs.push({ text: 'L039星门0722燃料站正在建设中，请留意空域中作业的工程船', ttl: 8 });
+      radio.msgs.push({  text: 'L039星门0722燃料站正在建设中，请留意空域中作业的工程船', ttl: 8, duty: true });
       if (radio.msgs.length > 2) radio.msgs.shift();
       renderRadio();
     }
@@ -2146,6 +2857,20 @@
           eng.workTimer = 3 + Math.random() * 4;
         }
       }
+      // 作业时少量焊接火花（短寿命，复用粒子系统，限制数量）
+      if (eng.working && Math.random() < dt * 7) {
+        for (var wsp = 0; wsp < 3; wsp++) {
+          var wa = Math.random() * Math.PI * 2, ws = 30 + Math.random() * 50;
+          particles.push({
+            x: eng.x, y: eng.y,
+            vx: Math.cos(wa) * ws, vy: Math.sin(wa) * ws,
+            life: 0.2 + Math.random() * 0.2, maxLife: 0.4,
+            size: 1 + Math.random() * 1.5,
+            color: Math.random() < 0.5 ? '#ffe080' : '#fff4c0',
+            kind: 'spark', rot: 0, vr: 0
+          });
+        }
+      }
     }
 
     // 更新框架站货箱小行星
@@ -2226,7 +2951,7 @@
       px = 3000 + Math.random() * (MAP.w - 6000);
       py = 3000 + Math.random() * (MAP.h - 6000);
       tries++;
-    } while (tries < 20 && Math.hypot(px - ship.x, py - ship.y) < 4000);
+    } while (tries < 20 && (Math.hypot(px - ship.x, py - ship.y) < 4000 || inControlZone(px, py)));
     var angle = Math.random() * Math.PI * 2;
     var drones = [];
     // 指挥无人机（玩家舰船1/2大小，三角形暗红色）
@@ -2392,7 +3117,7 @@
       px = 3000 + Math.random() * (MAP.w - 6000);
       py = 3000 + Math.random() * (MAP.h - 6000);
       tries++;
-    } while (tries < 20 && Math.hypot(px - ship.x, py - ship.y) < 5000);
+    } while (tries < 20 && (Math.hypot(px - ship.x, py - ship.y) < 5000 || inControlZone(px, py)));
     suspiciousShip = {
       x: px, y: py,
       angle: Math.random() * Math.PI * 2,
@@ -2576,7 +3301,7 @@
       px = 3000 + Math.random() * (MAP.w - 6000);
       py = 3000 + Math.random() * (MAP.h - 6000);
       tries++;
-    } while (tries < 20 && Math.hypot(px - ship.x, py - ship.y) < 4000);
+    } while (tries < 20 && (Math.hypot(px - ship.x, py - ship.y) < 4000 || inControlZone(px, py)));
     var model = MERCHANT_LIB[Math.floor(Math.random() * MERCHANT_LIB.length)];
     var sz = SHIP_SIZE[model.size];
     rescueShip = {
@@ -2686,6 +3411,7 @@
   var audioCtx = null, audioMaster = null;
   var engineOsc = null, engineGain = null, engineFilter = null, engineSub = null;
   var engineRunning = false, audioInited = false;
+  var astHumOsc = null, astHumSub = null, astHumGain = null, astHumFilter = null, astHumRunning = false;
 
   function initAudio() {
     if (audioInited) return;
@@ -2759,6 +3485,93 @@
     engineFilter.connect(engineGain); engineGain.connect(audioMaster);
     engineOsc.start(t); engineSub.start(t);
   }
+  // ========== 程序化BGM：数学摇滚风格（7/8拍，A小调分解和弦，clean tone+延迟） ==========
+  var bgmCtx = null, bgmMaster = null, bgmDelay = null, bgmDelayGain = null;
+  var bgmTimer = null, bgmStep = 0, bgmChordIdx = 0;
+  var BGM_BPM = 62;
+  var BGM_8TH = 60 / BGM_BPM / 2; // 八分音符时长
+  // A小调和弦进行：Am - F - C - G（根音+三音+五音+高八度根音）
+  var BGM_CHORDS = [
+    [110.00, 130.81, 164.81, 220.00], // Am: A2 C3 E3 A3
+    [87.31, 110.00, 130.81, 174.61],   // F:  F2 A2 C3 F3
+    [130.81, 164.81, 196.00, 261.63],  // C:  C3 E3 G3 C4
+    [98.00, 123.47, 146.83, 196.00]    // G:  G2 B2 D3 G3
+  ];
+  // 7/8拍分解和弦pattern（索引指向和弦音，0=根音 1=三音 2=五音 3=高八度）
+  var BGM_PATTERN = [0, 2, 1, 2, 0, 2, 3];
+  var BGM_BASS_PATTERN = [true, false, false, false, false, false, false]; // 每小节第一个音加低音
+
+  function bgmPlayNote(freq, time, dur, vol, sendDelay) {
+    if (!bgmCtx) return;
+    var osc = bgmCtx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    var filt = bgmCtx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = 1800;
+    filt.Q.value = 0.5;
+    var g = bgmCtx.createGain();
+    g.gain.setValueAtTime(0, time);
+    g.gain.linearRampToValueAtTime(vol, time + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.001, time + dur);
+    osc.connect(filt); filt.connect(g);
+    g.connect(bgmMaster);
+    if (sendDelay && bgmDelay) g.connect(bgmDelay);
+    osc.start(time);
+    osc.stop(time + dur + 0.05);
+  }
+
+  function bgmSchedule() {
+    if (!bgmCtx) return;
+    var t = bgmCtx.currentTime + 0.05;
+    var chord = BGM_CHORDS[bgmChordIdx];
+    var idx = bgmStep % 7;
+    // 高音分解和弦
+    var noteFreq = chord[BGM_PATTERN[idx]] * 2; // 升一个八度更清亮
+    bgmPlayNote(noteFreq, t, BGM_8TH * 1.4, 0.25, true);
+    // 低音（每小节第一个音）
+    if (BGM_BASS_PATTERN[idx]) {
+      bgmPlayNote(chord[0], t, BGM_8TH * 5, 0.35, false);
+    }
+    // 每4个7/8小节换和弦（4*7=28步）
+    bgmStep++;
+    if (bgmStep % 28 === 0) {
+      bgmChordIdx = (bgmChordIdx + 1) % BGM_CHORDS.length;
+    }
+  }
+
+  function startBgm() {
+    if (bgmCtx) return;
+    try {
+      bgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+      bgmMaster = bgmCtx.createGain();
+      bgmMaster.gain.value = 0.04;
+      // 延迟效果（数学摇滚常用的dotted eighth延迟）
+      bgmDelay = bgmCtx.createDelay(1.0);
+      bgmDelay.delayTime.value = BGM_8TH * 1.5;
+      bgmDelayGain = bgmCtx.createGain();
+      bgmDelayGain.gain.value = 0.25;
+      var delayFilt = bgmCtx.createBiquadFilter();
+      delayFilt.type = 'lowpass';
+      delayFilt.frequency.value = 1200;
+      bgmDelay.connect(delayFilt);
+      delayFilt.connect(bgmDelayGain);
+      bgmDelayGain.connect(bgmMaster);
+      bgmDelayGain.connect(bgmDelay); // 反馈
+      bgmMaster.connect(bgmCtx.destination);
+      bgmTimer = setInterval(bgmSchedule, BGM_8TH * 1000);
+    } catch (e) { /* 静默失败 */ }
+  }
+
+  function stopBgm() {
+    if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; }
+    if (bgmCtx) {
+      try { bgmCtx.close(); } catch (e) {}
+      bgmCtx = null; bgmMaster = null; bgmDelay = null; bgmDelayGain = null;
+    }
+    bgmStep = 0; bgmChordIdx = 0;
+  }
+
   function updateEngine(speed, maxSpeed, combat) {
     if (!audioCtx || !engineRunning) return;
     var r = Math.min(1, Math.abs(speed) / Math.max(1, maxSpeed));
@@ -2769,6 +3582,57 @@
     engineFilter.frequency.setTargetAtTime(combat ? 200 + r * 400 : 90 + r * 200, t, 0.12);
     var v = speed === 0 ? 0.015 : (combat ? 0.12 + r * 0.14 : 0.04 + r * 0.1);
     engineGain.gain.setTargetAtTime(v, t, 0.15);
+  }
+
+  function startAstHum() {
+    if (!audioCtx || astHumRunning) return;
+    astHumRunning = true;
+    var t = audioCtx.currentTime;
+    astHumOsc = audioCtx.createOscillator();
+    astHumOsc.type = 'sawtooth'; astHumOsc.frequency.value = 42;
+    astHumSub = audioCtx.createOscillator();
+    astHumSub.type = 'sine'; astHumSub.frequency.value = 21;
+    astHumFilter = audioCtx.createBiquadFilter();
+    astHumFilter.type = 'lowpass'; astHumFilter.frequency.value = 80;
+    astHumGain = audioCtx.createGain(); astHumGain.gain.value = 0;
+    astHumOsc.connect(astHumFilter); astHumSub.connect(astHumFilter);
+    astHumFilter.connect(astHumGain); astHumGain.connect(audioMaster);
+    astHumOsc.start(t); astHumSub.start(t);
+  }
+  function updateAstHum(dist) {
+    if (!audioCtx || !astHumRunning) return;
+    var t = audioCtx.currentTime;
+    var proximity = dist < 1500 ? (1 - Math.max(0, dist - 500) / 1000) : 0;
+    var v = Math.max(0, Math.min(1, proximity)) * 0.06;
+    astHumGain.gain.setTargetAtTime(v, t, 0.5);
+    var f = 42 - proximity * 6;
+    astHumOsc.frequency.setTargetAtTime(f, t, 0.3);
+    astHumSub.frequency.setTargetAtTime(f * 0.5, t, 0.3);
+  }
+  function startStHum() {
+    if (!audioCtx || stHumRunning) return;
+    stHumRunning = true;
+    var t = audioCtx.currentTime;
+    stHumOsc = audioCtx.createOscillator();
+    stHumOsc.type = 'sawtooth'; stHumOsc.frequency.value = 55;
+    stHumSub = audioCtx.createOscillator();
+    stHumSub.type = 'sine'; stHumSub.frequency.value = 27.5;
+    stHumFilter = audioCtx.createBiquadFilter();
+    stHumFilter.type = 'lowpass'; stHumFilter.frequency.value = 120;
+    stHumGain = audioCtx.createGain(); stHumGain.gain.value = 0;
+    stHumOsc.connect(stHumFilter); stHumSub.connect(stHumFilter);
+    stHumFilter.connect(stHumGain); stHumGain.connect(audioMaster);
+    stHumOsc.start(t); stHumSub.start(t);
+  }
+  function updateStHum(dist) {
+    if (!audioCtx || !stHumRunning) return;
+    var t = audioCtx.currentTime;
+    var proximity = dist < 1500 ? (1 - Math.max(0, dist - 500) / 1000) : 0;
+    var v = Math.max(0, Math.min(1, proximity)) * 0.05;
+    stHumGain.gain.setTargetAtTime(v, t, 0.5);
+    var f = 55 - proximity * 5;
+    stHumOsc.frequency.setTargetAtTime(f, t, 0.3);
+    stHumSub.frequency.setTargetAtTime(f * 0.5, t, 0.3);
   }
 
   /* --- 音效库 --- */
@@ -2922,6 +3786,264 @@
     });
   }
 
+  // 初始化废弃站环绕残骸：总数5~8（≤8），70%红锈建筑垃圾 / 30%普通陨石外形；原地缓慢自转、不平移
+  function initWreck() {
+    wreckage.length = 0;
+    var n = 10;                 // 同时存在总数10个
+    for (var i = 0; i < n; i++) {
+      var wang = Math.random() * Math.PI * 2;
+      var wrad = 210 + Math.random() * 520;
+      var isJunk = Math.random() < 0.70;
+      var rx, ry;
+      if (isJunk) { rx = 14 + Math.random() * 14; ry = 10 + Math.random() * 10; }
+      else { rx = 14 + Math.random() * 7; ry = 11 + Math.random() * 5; }
+      wreckage.push({
+        x: WRECK.x + Math.cos(wang) * wrad,
+        y: WRECK.y + Math.sin(wang) * wrad,
+        rx: rx, ry: ry,
+        rot: Math.random() * Math.PI * 2,
+        vr: (Math.random() - 0.5) * 0.3,
+        kind: isJunk ? 'junk' : 'rock',
+        seed: Math.random() * Math.PI * 2,
+        capsule: false
+      });
+    }
+    // 时空胶囊藏在一块建筑垃圾中（随机挑一块 junk）
+    var junks = wreckage.filter(function (w) { return w.kind === 'junk'; });
+    if (junks.length) junks[Math.floor(Math.random() * junks.length)].capsule = true;
+  }
+
+  // 废弃站每帧更新：残骸原地自转 + 飞船碰撞（残骸不可摧毁）；胶囊交互、警告文字、专属无线电
+  function updateWreck(dt, now) {
+    for (var wi = 0; wi < wreckage.length; wi++) {
+      var w = wreckage[wi];
+      w.rot += w.vr * dt;
+      if (blackoutActive) continue;
+      var sdx = ship.x - w.x, sdy = ship.y - w.y;
+      var sd = Math.hypot(sdx, sdy), collR = w.rx + 18;
+      if (sd < collR && sd > 0.01) {
+        var nx = sdx / sd, ny = sdy / sd;
+        ship.x += nx * (collR - sd); ship.y += ny * (collR - sd);
+        var tvx = Math.cos(ship.angle) * ship.speed + ship.dvx;
+        var tvy = Math.sin(ship.angle) * ship.speed + ship.dvy;
+        var vn = tvx * nx + tvy * ny;
+        if (vn < 0) { ship.dvx -= 1.6 * vn * nx; ship.dvy -= 1.6 * vn * ny; }
+        ship.dvx *= 0.7; ship.dvy *= 0.7; ship.speed *= 0.55;
+        SFX.shipHit();
+        var impact = Math.hypot(tvx, tvy);
+        applyArmorDamage(Math.max(3, 12 * Math.min(3, Math.max(0.3, impact / 250))), combat.active);
+        shake.t = now; shake.dur = 0.25;
+        shake.x = (Math.random() - 0.5) * 8; shake.y = (Math.random() - 0.5) * 8;
+      }
+    }
+    // 时空胶囊：未读且载体在极近距离时显示交互提示
+    var cap = null;
+    if (!capsuleRead) for (var ci = 0; ci < wreckage.length; ci++) if (wreckage[ci].capsule) { cap = wreckage[ci]; break; }
+    var nearCap = cap && Math.hypot(cap.x - ship.x, cap.y - ship.y) < 70;
+    if (nearCap !== capsulePromptVisible) {
+      capsulePromptVisible = !!nearCap;
+      capsulePromptEl.classList.toggle('show', capsulePromptVisible);
+    }
+    // 红色信标小判定圈：仅顶部文字警示（不禁火、不限加力、不泛红）
+    var wbd = Math.hypot(ship.x - WRECK_BEACON.x, ship.y - WRECK_BEACON.y);
+    wreckWarnEl.classList.toggle('show', wbd < WRECK_BEACON.radius);
+    // 靠近废弃站专属无线电（靠近播一次，远离后重置）
+    var wsd = Math.hypot(ship.x - WRECK.x, ship.y - WRECK.y);
+    if (wsd < 1000 && !wreckRadioPlayed) {
+      wreckRadioPlayed = true;
+      addRadioMsg(WRECK_RADIO[Math.floor(Math.random() * WRECK_RADIO.length)]);
+    } else if (wsd > 1500) {
+      wreckRadioPlayed = false;
+    }
+  }
+
+  // 初始化矿业平台附属站附近的橙色货箱（6个，静态、有碰撞、不可摧毁）
+  function initAstSatCargos() {
+    astSatCargos.length = 0;
+    for (var i = 0; i < 6; i++) {
+      var cang = Math.random() * Math.PI * 2;
+      var crad = 140 + Math.random() * 180;
+      astSatCargos.push({
+        x: ASTEROID_SAT.x + Math.cos(cang) * crad,
+        y: ASTEROID_SAT.y + Math.sin(cang) * crad,
+        rx: 22 + Math.random() * 8,
+        ry: 14 + Math.random() * 5,
+        rot: Math.random() * Math.PI * 2,
+        vr: (Math.random() - 0.5) * 0.25
+      });
+    }
+  }
+  // 初始化0721补给站氛围元素（杂物+违章停泊）
+  function initStationAtmosphere() {
+    stationDebris.length = 0;
+    for (var i = 0; i < 6; i++) {
+      var dang = Math.random() * Math.PI * 2;
+      var drad = 200 + Math.random() * 300;
+      stationDebris.push({
+        x: STATION.x + Math.cos(dang) * drad,
+        y: STATION.y + Math.sin(dang) * drad,
+        rx: 8 + Math.random() * 10,
+        ry: 6 + Math.random() * 7,
+        rot: Math.random() * Math.PI * 2,
+        vr: (Math.random() - 0.5) * 0.4,
+        vx: (Math.random() - 0.5) * 8,
+        vy: (Math.random() - 0.5) * 8,
+        kind: Math.random() < 0.6 ? 'crate' : 'scrap'
+      });
+    }
+    stationIllegal.length = 0;
+    var illegalAngles = [Math.PI * 0.8, Math.PI * 1.1, Math.PI * 1.4, Math.PI * 1.7]; // 左侧和下方，避开右侧泊位
+    for (var j = 0; j < 4; j++) {
+      var ia = illegalAngles[j] + (Math.random() - 0.5) * 0.2;
+      var ir = 185 + Math.random() * 25;
+      var isBarge = Math.random() < 0.6;
+      stationIllegal.push({
+        x: STATION.x + Math.cos(ia) * ir,
+        y: STATION.y + Math.sin(ia) * ir,
+        angle: ia + Math.PI / 2 + (Math.random() - 0.5) * 0.3,
+        callsign: genCallsign(),
+        model: isBarge ? BARGE_LIB[Math.floor(Math.random() * BARGE_LIB.length)].name : 'X8小型工程舰',
+        size: isBarge ? (Math.random() < 0.5 ? 'small' : 'medium') : 'small'
+      });
+    }
+  }
+
+  // 0721杂物更新：缓慢漂移+自转+边界反弹+碰撞
+  function updateStationDebris(dt, now) {
+    for (var di = 0; di < stationDebris.length; di++) {
+      var d = stationDebris[di];
+      d.x += d.vx * dt; d.y += d.vy * dt;
+      d.rot += d.vr * dt;
+      // 边界：离0721超过650单位则反弹
+      var ddx = d.x - STATION.x, ddy = d.y - STATION.y;
+      var dd = Math.hypot(ddx, ddy);
+      if (dd > 650) {
+        var nx = ddx / dd, ny = ddy / dd;
+        d.vx -= 2 * (d.vx * nx + d.vy * ny) * nx;
+        d.vy -= 2 * (d.vx * nx + d.vy * ny) * ny;
+        d.x = STATION.x + nx * 640; d.y = STATION.y + ny * 640;
+      }
+      // 杂物无碰撞体积（纯氛围装饰）
+    }
+  }
+
+  // 飞船航行尾迹更新
+  function updateShipTrail(dt) {
+    var spd = Math.abs(ship.speed) + Math.hypot(ship.dvx, ship.dvy);
+    if (spd > 5) {
+      var fwd = { x: Math.cos(ship.angle), y: Math.sin(ship.angle) };
+      shipTrail.push({
+        x: ship.x - fwd.x * 24,
+        y: ship.y - fwd.y * 24,
+        life: 1.0,
+        size: 2 + spd * 0.015
+      });
+    }
+    for (var i = shipTrail.length - 1; i >= 0; i--) {
+      shipTrail[i].life -= dt * 1.2;
+      if (shipTrail[i].life <= 0) shipTrail.splice(i, 1);
+    }
+    if (shipTrail.length > 80) shipTrail.splice(0, shipTrail.length - 80);
+  }
+
+  // 流星更新
+  function updateShootingStars(dt, now) {
+    shootingStarTimer -= dt;
+    if (shootingStarTimer <= 0) {
+      shootingStarTimer = 25 + Math.random() * 35;
+      // 从屏幕外一个角生成，飞向对角
+      var side = Math.floor(Math.random() * 4);
+      var mx, my, mvx, mvy;
+      var sp = 400 + Math.random() * 300;
+      if (side === 0) { mx = cam.cx - W / cam.zoom; my = cam.cy - H / cam.zoom + Math.random() * H / cam.zoom; mvx = sp; mvy = sp * 0.3; }
+      else if (side === 1) { mx = cam.cx + W / cam.zoom; my = cam.cy - H / cam.zoom + Math.random() * H / cam.zoom; mvx = -sp; mvy = sp * 0.3; }
+      else if (side === 2) { mx = cam.cx - W / cam.zoom + Math.random() * W / cam.zoom; my = cam.cy - H / cam.zoom; mvx = sp * 0.3; mvy = sp; }
+      else { mx = cam.cx - W / cam.zoom + Math.random() * W / cam.zoom; my = cam.cy + H / cam.zoom; mvx = sp * 0.3; mvy = -sp; }
+      shootingStars.push({ x: mx, y: my, vx: mvx, vy: mvy, life: 2.5, trail: [] });
+    }
+    for (var mi = shootingStars.length - 1; mi >= 0; mi--) {
+      var m = shootingStars[mi];
+      m.x += m.vx * dt; m.y += m.vy * dt;
+      m.life -= dt;
+      m.trail.push({ x: m.x, y: m.y });
+      if (m.trail.length > 12) m.trail.shift();
+      if (m.life <= 0) shootingStars.splice(mi, 1);
+    }
+  }
+
+  // 0721交通艇更新
+  function updateStationShuttle(dt) {
+    var s = stationShuttle;
+    if (s.state === 'docked') {
+      s.timer -= dt;
+      s.x = DOCK_ZONE.cx - 30; s.y = DOCK_ZONE.cy;
+      if (s.timer <= 0) {
+        s.state = 'outbound';
+        s.tx = STATION.x + Math.cos(-0.8) * 400;
+        s.ty = STATION.y + Math.sin(-0.8) * 400;
+        s.timer = 0;
+      }
+    } else if (s.state === 'outbound') {
+      var dx = s.tx - s.x, dy = s.ty - s.y;
+      var d = Math.hypot(dx, dy);
+      s.angle = Math.atan2(dy, dx);
+      if (d < 10) {
+        s.state = 'loiter';
+        s.timer = 6 + Math.random() * 4;
+        s.loiterAngle = Math.random() * Math.PI * 2;
+      } else {
+        s.x += dx / d * 120 * dt;
+        s.y += dy / d * 120 * dt;
+      }
+    } else if (s.state === 'loiter') {
+      s.timer -= dt;
+      s.loiterAngle += 0.3 * dt;
+      s.x = s.tx + Math.cos(s.loiterAngle) * 60;
+      s.y = s.ty + Math.sin(s.loiterAngle) * 60;
+      s.angle = s.loiterAngle + Math.PI / 2;
+      if (s.timer <= 0) {
+        s.state = 'inbound';
+        s.tx = DOCK_ZONE.cx - 30; s.ty = DOCK_ZONE.cy;
+      }
+    } else if (s.state === 'inbound') {
+      var dx2 = s.tx - s.x, dy2 = s.ty - s.y;
+      var d2 = Math.hypot(dx2, dy2);
+      s.angle = Math.atan2(dy2, dx2);
+      if (d2 < 10) {
+        s.state = 'docked';
+        s.timer = 15 + Math.random() * 20;
+      } else {
+        s.x += dx2 / d2 * 100 * dt;
+        s.y += dy2 / d2 * 100 * dt;
+      }
+    }
+  }
+
+  // 附属站货箱更新：原地自转 + 飞船碰撞
+  function updateAstSatCargos(dt, now) {
+    for (var ci = 0; ci < astSatCargos.length; ci++) {
+      var c = astSatCargos[ci];
+      c.rot += c.vr * dt;
+      if (blackoutActive) continue;
+      var sdx = ship.x - c.x, sdy = ship.y - c.y;
+      var sd = Math.hypot(sdx, sdy), collR = c.rx + 18;
+      if (sd < collR && sd > 0.01) {
+        var nx = sdx / sd, ny = sdy / sd;
+        ship.x += nx * (collR - sd); ship.y += ny * (collR - sd);
+        var tvx = Math.cos(ship.angle) * ship.speed + ship.dvx;
+        var tvy = Math.sin(ship.angle) * ship.speed + ship.dvy;
+        var vn = tvx * nx + tvy * ny;
+        if (vn < 0) { ship.dvx -= 1.6 * vn * nx; ship.dvy -= 1.6 * vn * ny; }
+        ship.dvx *= 0.7; ship.dvy *= 0.7; ship.speed *= 0.55;
+        SFX.shipHit();
+        var impact = Math.hypot(tvx, tvy);
+        applyArmorDamage(Math.max(3, 12 * Math.min(3, Math.max(0.3, impact / 250))), combat.active);
+        shake.t = now; shake.dur = 0.25;
+        shake.x = (Math.random() - 0.5) * 8; shake.y = (Math.random() - 0.5) * 8;
+      }
+    }
+  }
+
   function showObsTip(txt) {
     obsTipEl.textContent = txt;
     obsTipEl.classList.add('show');
@@ -3013,6 +4135,27 @@
     if (zoneBlocked && fireState === 'charging') cancelCharge();
   }
 
+  // 静海强管制区：进入3秒强提醒，禁加力/战斗加力/轨道炮，进入瞬间强制退出这些状态
+  function updateControlZone(dt) {
+    var inside = inControlZone(ship.x, ship.y);
+    if (inside && !controlInside) {
+      controlNoticeTimer = 3;
+      controlNoticeEl.textContent = '已进入静海强管制区 · 加力与轨道炮受限';
+      controlNoticeEl.classList.add('show');
+      if (bell.index === 5) { bell.index = 4; bell.flankTimer = 0; bell.flankCd = FLANK_COOLDOWN; updateBellUI(); }
+      if (combat.active) exitCombat();
+      if (fireState === 'charging') cancelCharge();
+    }
+    if (controlNoticeTimer > 0) {
+      controlNoticeTimer -= dt;
+      if (controlNoticeTimer <= 0) controlNoticeEl.classList.remove('show');
+    }
+    zoneBlocked = zoneBlocked || inside;          // 区内轨道炮开火按钮变灰、禁火
+    fireBtn.classList.toggle('blocked', zoneBlocked);
+    if (inside && fireState === 'charging') cancelCharge();
+    controlInside = inside;
+  }
+
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
 
   /* ===================== 确定性伪随机（星空采样） ===================== */
@@ -3094,7 +4237,7 @@
       var dim = SHIP_SIZE[sz];
       var px, py, tt = 0;
       do { px = 1000 + Math.random() * (MAP.w - 2000); py = 1000 + Math.random() * (MAP.h - 2000); tt++; }
-      while (tt < 30 && false);
+      while (tt < 30 && inControlZone(px, py));
       var ang = Math.random() * Math.PI * 2;
       var wpDist = 2000 + Math.random() * 5000;
       merchants.push({
@@ -3119,7 +4262,7 @@
       var bdim = SHIP_SIZE[bsz];
       var bpx, bpy, btt = 0;
       do { bpx = 1000 + Math.random() * (MAP.w - 2000); bpy = 1000 + Math.random() * (MAP.h - 2000); btt++; }
-      while (btt < 30 && false);
+      while (btt < 30 && inControlZone(bpx, bpy));
       var bang = Math.random() * Math.PI * 2;
       var bwp = 1500 + Math.random() * 3500;
       barges.push({
@@ -3479,11 +4622,29 @@
   });
 
   /* ===================== 武器信息面板 ===================== */
+  var infoPageMain = document.getElementById('infoPageMain');
+  var infoPageStations = document.getElementById('infoPageStations');
+  function showInfoPage(page) {
+    infoPageMain.classList.toggle('hidden', page !== 'main');
+    infoPageStations.classList.toggle('hidden', page !== 'stations');
+    var infoCard = infoPanel.querySelector('.card');
+    if (infoCard) infoCard.scrollTop = 0;
+  }
   function toggleInfo(show) {
     var open = (show === undefined) ? infoPanel.classList.contains('hidden') : show;
     infoPanel.classList.toggle('hidden', !open);
     infoBtn.classList.toggle('open', open);
+    if (open) showInfoPage('main');   // 每次打开回到舰船/武器主页
   }
+  document.getElementById('stEntry').addEventListener('pointerdown', function (e) {
+    e.preventDefault(); e.stopPropagation();
+    initAudio(); resumeAudio();
+    showInfoPage('stations'); SFX.panelOpen();
+  });
+  document.getElementById('stBack').addEventListener('pointerdown', function (e) {
+    e.preventDefault(); e.stopPropagation();
+    showInfoPage('main'); SFX.panelClose();
+  });
   infoBtn.addEventListener('pointerdown', function (e) {
     e.preventDefault();
     initAudio(); resumeAudio();
@@ -3496,25 +4657,6 @@
     e.preventDefault();
     toggleInfo(false);
   });
-  /* ===================== 任务简报面板 ===================== */
-  function toggleBrief(show) {
-    var open = (show === undefined) ? briefPanel.classList.contains('hidden') : show;
-    briefPanel.classList.toggle('hidden', !open);
-    briefBtn.classList.toggle('open', open);
-  }
-  briefBtn.addEventListener('pointerdown', function (e) {
-    e.preventDefault();
-    initAudio(); resumeAudio();
-    var wasOpen = !briefPanel.classList.contains('hidden');
-    toggleBrief();
-    if (wasOpen) SFX.panelClose(); else SFX.panelOpen();
-  });
-  briefPanel.querySelector('.backdrop').addEventListener('pointerdown', function () { toggleBrief(false); });
-  briefPanel.querySelector('.close').addEventListener('pointerdown', function (e) {
-    e.preventDefault();
-    toggleBrief(false);
-  });
-
   /* 帮助面板 */
   function toggleHelp(show) {
     var open = (show === undefined) ? helpPanel.classList.contains('hidden') : show;
@@ -3531,6 +4673,25 @@
     e.preventDefault();
     toggleHelp(false);
   });
+
+  /* 时空胶囊彩蛋交互 */
+  function openCapsule() {
+    capsuleBodyEl.textContent = CAPSULE_TEXT;
+    capsuleOverlayEl.classList.remove('hidden');
+    capsuleRead = true;
+    capsulePromptVisible = false;
+    capsulePromptEl.classList.remove('show');
+  }
+  function closeCapsule() { capsuleOverlayEl.classList.add('hidden'); }
+  capsulePromptEl.addEventListener('pointerdown', function (e) {
+    e.preventDefault(); e.stopPropagation();
+    initAudio(); resumeAudio();
+    openCapsule();
+  });
+  capsuleOverlayEl.querySelector('.close').addEventListener('pointerdown', function (e) {
+    e.preventDefault(); closeCapsule();
+  });
+  capsuleOverlayEl.querySelector('.backdrop').addEventListener('pointerdown', closeCapsule);
 
   /* 登船滑块交互 */
   function updateBoardingSlider() {
@@ -3581,6 +4742,56 @@
     boardingSlider.dragging = false;
     boardingSlider.progress = 0;
     updateBoardingSlider();
+  });
+
+  /* 护航维修滑块（右至左） */
+  function updateEscortRepairSlider() {
+    if (!escortRepairSlider.active) {
+      escortRepairOverlay.classList.add('hidden');
+      return;
+    }
+    escortRepairOverlay.classList.remove('hidden');
+    erFill.style.width = (escortRepairSlider.progress * 100) + '%';
+    var trackW = erThumb.parentElement.offsetWidth - 52;
+    erThumb.style.right = (4 + escortRepairSlider.progress * trackW) + 'px';
+  }
+  erThumb.addEventListener('pointerdown', function (e) {
+    if (!escortRepairSlider.active) return;
+    escortRepairSlider.dragging = true;
+    escortRepairSlider.startX = e.clientX;
+    erThumb.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  erThumb.addEventListener('pointermove', function (e) {
+    if (!escortRepairSlider.dragging) return;
+    var trackW = erThumb.parentElement.offsetWidth - 52;
+    var dx = e.clientX - escortRepairSlider.startX;  // 向左拖为负
+    escortRepairSlider.progress = Math.max(0, Math.min(1, -dx / trackW));
+    updateEscortRepairSlider();
+    if (escortRepairSlider.progress >= 1) {
+      escortRepairSlider.dragging = false;
+      escortRepairSlider.active = false;
+      escortRepairSlider.progress = 0;
+      escortRepairOverlay.classList.add('hidden');
+      // 商船3-5秒后恢复
+      if (currentTask && currentTask.type === 'escort' && currentTask.faultState === 'waiting') {
+        currentTask.faultState = 'recovering';
+        currentTask.faultRecoverTimer = 3 + Math.random() * 2;
+      }
+      SFX.modeSwitch();
+    }
+  });
+  erThumb.addEventListener('pointerup', function (e) {
+    if (escortRepairSlider.dragging && escortRepairSlider.progress < 1) {
+      escortRepairSlider.dragging = false;
+      escortRepairSlider.progress = 0;
+      updateEscortRepairSlider();
+    }
+  });
+  erThumb.addEventListener('pointercancel', function () {
+    escortRepairSlider.dragging = false;
+    escortRepairSlider.progress = 0;
+    updateEscortRepairSlider();
   });
 
   /* 紧急停机按钮 */
@@ -3672,13 +4883,39 @@
     });
   }
 
+  /* 公牛5号矿业平台靠泊菜单 */
+  var astPanel = document.getElementById('astPanel');
+  if (astPanel) {
+    astPanel.querySelector('.backdrop').addEventListener('pointerdown', function () { astPanel.classList.add('hidden'); });
+    astPanel.querySelector('.close').addEventListener('pointerdown', function () { astPanel.classList.add('hidden'); });
+    document.getElementById('astRepair').addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      armor = 100; armorState = 'ok'; armorTriggered = false;
+      hudEl.classList.remove('damage-dim');
+      sosSlider.classList.remove('show');
+      updateArmorIcon();
+      SFX.ciwsReload();
+      astPanel.classList.add('hidden');
+    });
+    document.getElementById('astCargo').addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      if (cargoState === 'towing') return;
+      cargoState = 'towing';
+      cargoNotifyT = 3;
+      astPanel.classList.add('hidden');
+      SFX.panelClose();
+    });
+  }
+
   /* 无线电开关 */
   function renderRadio() {
     radioMsgsEl.innerHTML = '';
     for (var i = 0; i < radio.msgs.length; i++) {
       var div = document.createElement('div');
       div.className = 'msg' + (i > 0 ? ' old' : '');
-      div.textContent = typeof radio.msgs[i] === 'string' ? radio.msgs[i] : radio.msgs[i].text;
+      var _msg = radio.msgs[i];
+      div.textContent = typeof _msg === 'string' ? _msg : _msg.text;
+      if (typeof _msg === 'object' && _msg.color) div.style.color = _msg.color;
       radioMsgsEl.appendChild(div);
     }
   }
@@ -3695,9 +4932,14 @@
   function toggleRadio() {
     radio.on = !radio.on;
     radioBtn.classList.toggle('on', radio.on);
+    // 更新按钮标注：灰色=勤务频道常开，绿色=全频道接收
+    radioLabelEl.textContent = radio.on ? '全频' : '勤务';
     if (!radio.on) {
-      radio.msgs = [];
-      radioMsgsEl.innerHTML = '';
+      // 关闭公共频道：清空公共闲聊，保留勤务消息自然过期
+      for (var _ri = radio.msgs.length - 1; _ri >= 0; _ri--) {
+        if (!radio.msgs[_ri].duty) radio.msgs.splice(_ri, 1);
+      }
+      renderRadio();
     } else {
       radio.timer = 0.5;
     }
@@ -3782,6 +5024,8 @@
     if (armorState === 'engine' && bell.index >= 2) return;
     // 牵引状态：仅限后退一/停机/微速/前进一
     if ((suspiciousState === 'towing' || rescueState === 'towing') && bell.index >= 3) return;
+    // 强管制区内禁止加力
+    if (bell.index === 4 && inControlZone(ship.x, ship.y)) { showObsTip('管制区内禁止加力'); return; }
     // 加力档：检查冷却
     if (bell.index === 4 && bell.flankCd > 0) return;
     // 普通档位切换冷却（加力档从前进二推入无冷却）
@@ -3855,6 +5099,7 @@
   /* ===== 战斗加力（COMBAT FLANK）===== */
   function enterCombat() {
     if (combat.active) return;
+    if (inControlZone(ship.x, ship.y)) { showObsTip('管制区内禁止战斗加力'); return; }
     combat.active = true;
     combat.phase = 'accelerate';
     combat.timer = 3;
@@ -4209,6 +5454,14 @@
         while (adiff > Math.PI) adiff -= Math.PI * 2;
         while (adiff < -Math.PI) adiff += Math.PI * 2;
         v.angle += adiff * Math.min(1, 1.5 * dt);
+        // 护航商船：出生静止5秒后，从静止缓慢加速到目标速度（加速度25）
+        if (v.escort && currentTask && currentTask.type === 'escort') {
+          currentTask.spawnTimer += dt;
+          if (currentTask.spawnTimer > 5 && currentTask.faultState !== 'waiting' && currentTask.faultState !== 'recovering') {
+            var _target = currentTask.faultRecovered ? 90 : currentTask.baseSpeed;
+            v.speed = Math.min(_target, v.speed + 25 * dt);
+          }
+        }
         v.x += Math.cos(v.angle) * v.speed * dt;
         v.y += Math.sin(v.angle) * v.speed * dt;
       }
@@ -4273,6 +5526,7 @@
 
     /* --- 管制警戒区检测（进入则禁火 + 泛红警示） --- */
     updateZones(now);
+    updateControlZone(dt);
 
     /* --- 空间站靠泊检测（绿色矩形泊位） --- */
     var inDockZone = Math.abs(ship.x - DOCK_ZONE.cx) < DOCK_ZONE.halfL &&
@@ -4292,13 +5546,13 @@
       dockPromptEl.classList.remove('show');
     }
 
-    // 军事空间站靠泊检测（6个普通泊位，停船弹出菜单）
+    // 军事空间站靠泊检测（普通泊位，停船弹菜单；占用泊位不可靠泊；同时驱动HUD泊位状态）
     var inMilDock = false;
     for (var mbi = 0; mbi < MIL_BERTHS.length; mbi++) {
       var mb = MIL_BERTHS[mbi];
       var inX = mb.vertical ? Math.abs(ship.x - mb.x) < mb.halfL : Math.abs(ship.x - mb.x) < mb.halfL;
       var inY = mb.vertical ? Math.abs(ship.y - mb.y) < mb.halfW : Math.abs(ship.y - mb.y) < mb.halfW;
-      if (inX && inY) { inMilDock = true; break; }
+      if (inX && inY && !mb.occupied) inMilDock = true;
     }
     if (inMilDock && stSpeed < 2 && !milDocked && !blackoutActive) {
       milDocked = true;
@@ -4311,8 +5565,77 @@
     if (milDist < 500 && !milStationGreeted) {
       milStationGreeted = true;
       addRadioMsg('这里是静海前哨站塔台，勤务325欢迎归港');
+      addRadioMsg(MIL_RADIO[Math.floor(Math.random() * MIL_RADIO.length)]);
     } else if (milDist > 800) {
       milStationGreeted = false;
+    }
+
+    // 公牛5号矿业平台靠泊检测（6个旋转泊位，未占用的可泊）
+    var inAstDock = false;
+    for (var _adi = 0; _adi < ASTEROID_STATION.docks.length; _adi++) {
+      var _adk = ASTEROID_STATION.docks[_adi];
+      if (_adk.occupied) continue;
+      var _arot = ASTEROID_STATION.rot;
+      var _adkx = ASTEROID_STATION.x + _adk.cx * Math.cos(_arot) - _adk.cy * Math.sin(_arot);
+      var _adky = ASTEROID_STATION.y + _adk.cx * Math.sin(_arot) + _adk.cy * Math.cos(_arot);
+      var _adang = _adk.angle + _arot;
+      var _adx = ship.x - _adkx, _ady = ship.y - _adky;
+      var _alx = _adx * Math.cos(-_adang) - _ady * Math.sin(-_adang);
+      var _aly = _adx * Math.sin(-_adang) + _ady * Math.cos(-_adang);
+      if (Math.abs(_alx) < _adk.halfL && Math.abs(_aly) < _adk.halfW) inAstDock = true;
+    }
+    if (inAstDock && stSpeed < 2 && !astDocked && !blackoutActive && cargoState !== 'towing') {
+      astDocked = true;
+      for (var _fdi = 0; _fdi < ASTEROID_STATION.docks.length; _fdi++) {
+        var _fdk = ASTEROID_STATION.docks[_fdi];
+        if (_fdk.occupied) continue;
+        var _frot = ASTEROID_STATION.rot;
+        var _fkx = ASTEROID_STATION.x + _fdk.cx * Math.cos(_frot) - _fdk.cy * Math.sin(_frot);
+        var _fky = ASTEROID_STATION.y + _fdk.cx * Math.sin(_frot) + _fdk.cy * Math.cos(_frot);
+        if (Math.hypot(ship.x - _fkx, ship.y - _fky) < 80) { astDockIdx = _fdi; break; }
+      }
+      document.getElementById('astPanel').classList.remove('hidden');
+    }
+    if (!inAstDock) { astDocked = false; astDockIdx = -1; }
+
+    // 货箱任务强提醒倒计时
+    if (cargoNotifyT > 0) {
+      cargoNotifyT -= dt;
+      cargoNotifyEl.textContent = '超重矿石已挂载舰尾，请运往0721补给站牵引泊位';
+      cargoNotifyEl.classList.add('show');
+    } else {
+      cargoNotifyEl.classList.remove('show');
+    }
+
+    // 货箱运输任务完成检测：到达0721牵引泊位停船
+    if (cargoState === 'towing') {
+      if (Math.abs(ship.speed) < 5 && Math.hypot(ship.dvx, ship.dvy) < 5 && isInTowBerth(ship.x, ship.y) && !blackoutActive) {
+        cargoState = 'done';
+        addRadioMsg('超重矿石已移交0721补给站，任务完成');
+        setTimeout(function () { cargoState = 'none'; }, 2500);
+      }
+    }
+
+    // 公牛5号矿业平台自转
+    ASTEROID_STATION.rot += 0.025 * dt;
+    if (ASTEROID_STATION.rot > Math.PI * 2) ASTEROID_STATION.rot -= Math.PI * 2;
+    for (var _dri = 0; _dri < astDrones.length; _dri++) {
+      astDrones[_dri].angle += astDrones[_dri].speed * dt;
+    }
+    astCrane.angle = Math.sin(now / 1000 * 0.5) * 0.45;
+
+    // 公牛5号矿业平台专属无线电（靠近时每12-20秒一条）
+    var astDist = Math.hypot(ship.x - ASTEROID_STATION.x, ship.y - ASTEROID_STATION.y);
+    if (astDist < 1500 && audioCtx) { startAstHum(); updateAstHum(astDist); }
+    else if (astHumRunning) { updateAstHum(2000); }
+    if (astDist < 1400) {
+      astRadioTimer -= dt;
+      if (astRadioTimer <= 0) {
+        astRadioTimer = 12 + Math.random() * 8;
+        addRadioMsg(AST_RADIO[Math.floor(Math.random() * AST_RADIO.length)]);
+      }
+    } else {
+      astRadioTimer = 3;  // 离开后重置，下次靠近3秒后开始
     }
 
     /* --- 勤务任务更新 --- */
@@ -4320,6 +5643,38 @@
 
     /* --- 建设中框架空间站更新 --- */
     updateStation2(dt);
+    harborBoat.ang += harborBoat.w * dt;
+    milBoat.ang += milBoat.w * dt;
+    for (var _ati = 0; _ati < astTenders.length; _ati++) {
+      astTenders[_ati].t += astTenders[_ati].speed * dt;
+      if (astTenders[_ati].t > 2) astTenders[_ati].t -= 2;
+    }
+    // 采矿碎屑粒子更新
+    if (ASTEROID_STATION.debris) {
+      for (var _dbi = 0; _dbi < ASTEROID_STATION.debris.length; _dbi++) {
+        var _db = ASTEROID_STATION.debris[_dbi];
+        _db.life += dt;
+        _db.x += _db.vx * dt;
+        _db.y += _db.vy * dt;
+        if (_db.life > _db.maxLife) {
+          _db.x = -80 + (Math.random() - 0.5) * 20;
+          _db.y = 100 + (Math.random() - 0.5) * 10;
+          _db.vx = (Math.random() - 0.5) * 12;
+          _db.vy = 15 + Math.random() * 20;
+          _db.life = 0;
+        }
+      }
+    }
+    updateWreck(dt, now);
+    updateAstSatCargos(dt, now);
+    updateStationDebris(dt, now);
+    updateShipTrail(dt);
+    updateShootingStars(dt, now);
+    updateStationShuttle(dt);
+    // 0721环境音
+    var stDist = Math.hypot(ship.x - STATION.x, ship.y - STATION.y);
+    if (stDist < 1500 && audioCtx) { startStHum(); updateStHum(stDist); }
+    else if (stHumRunning) { updateStHum(2000); }
 
     /* --- 侦查无人机集群更新 --- */
     updateDrones(dt);
@@ -4358,6 +5713,7 @@
 
     /* --- 登船滑块UI更新 --- */
     updateBoardingSlider();
+    updateEscortRepairSlider();
 
     /* --- 开火状态机 --- */
     if (fireState === 'charging') {
@@ -4481,9 +5837,20 @@
     var engineMax = combat.active ? 1080 : Math.abs(gear.speed) || 540;
     updateEngine(ship.speed, engineMax, combat.active);
 
-    // 位置更新
-    ship.x += (Math.cos(ship.angle) * ship.speed + ship.dvx) * dt;
-    ship.y += (Math.sin(ship.angle) * ship.speed + ship.dvy) * dt;
+    // 靠泊锁定：停在矿业平台泊位中时，飞船跟随泊位一起旋转（推车钟自动离泊）
+    if (astDocked && astDockIdx >= 0 && bell.index === 1) {
+      var _lk = ASTEROID_STATION.docks[astDockIdx];
+      var _lrot = ASTEROID_STATION.rot;
+      ship.x = ASTEROID_STATION.x + _lk.cx * Math.cos(_lrot) - _lk.cy * Math.sin(_lrot);
+      ship.y = ASTEROID_STATION.y + _lk.cx * Math.sin(_lrot) + _lk.cy * Math.cos(_lrot);
+      ship.angle = _lk.angle + _lrot;
+      ship.speed = 0; ship.dvx = 0; ship.dvy = 0;
+    } else {
+      if (astDocked && bell.index !== 1) { astDocked = false; astDockIdx = -1; }
+      // 位置更新
+      ship.x += (Math.cos(ship.angle) * ship.speed + ship.dvx) * dt;
+      ship.y += (Math.sin(ship.angle) * ship.speed + ship.dvy) * dt;
+    }
 
     // 矩形地图边界：飞出则反弹
     var hitBoundary = false;
@@ -4735,6 +6102,19 @@
     var _all = merchants.concat(barges);
     // 固定停泊的航母也纳入接近显示
     _all.push(carrierShip);
+    // 0721违章停泊船也纳入接近显示
+    for (var _ili = 0; _ili < stationIllegal.length; _ili++) {
+      _all.push(stationIllegal[_ili]);
+    }
+    // 矿业平台占用泊位的船也纳入接近显示（计算自转后的世界坐标）
+    for (var _dki = 0; _dki < ASTEROID_STATION.docks.length; _dki++) {
+      var _dk = ASTEROID_STATION.docks[_dki];
+      if (!_dk.occupied || !_dk.callsign) continue;
+      var _dkrot = ASTEROID_STATION.rot;
+      var _dkx = ASTEROID_STATION.x + _dk.cx * Math.cos(_dkrot) - _dk.cy * Math.sin(_dkrot);
+      var _dky = ASTEROID_STATION.y + _dk.cx * Math.sin(_dkrot) + _dk.cy * Math.cos(_dkrot);
+      _all.push({ x: _dkx, y: _dky, callsign: _dk.callsign, model: _dk.model });
+    }
     for (var _ti = 0; _ti < _all.length; _ti++) {
       var _tv = _all[_ti];
       var _d = Math.hypot(_tv.x - ship.x, _tv.y - ship.y);
@@ -4756,18 +6136,19 @@
     }
     collisionWarnEl.classList.toggle('show', trafficWarn !== null);
 
-    /* --- 无线电消息更新（rAF 计时，5~8秒一条，最多两条，支持ttl过期） --- */
-    if (radio.on) {
-      // 减少所有消息的ttl，过期移除
-      for (var ri = radio.msgs.length - 1; ri >= 0; ri--) {
-        if (radio.msgs[ri].ttl !== undefined) {
-          radio.msgs[ri].ttl -= dt;
-          if (radio.msgs[ri].ttl <= 0) {
-            radio.msgs.splice(ri, 1);
-            renderRadio();
-          }
+    /* --- 无线电消息更新：勤务频道始终常开，公共闲聊仅开启时接收 --- */
+    // 所有消息的ttl更新和渲染始终执行（勤务消息在关闭状态下也能显示和过期）
+    for (var ri = radio.msgs.length - 1; ri >= 0; ri--) {
+      if (radio.msgs[ri].ttl !== undefined) {
+        radio.msgs[ri].ttl -= dt;
+        if (radio.msgs[ri].ttl <= 0) {
+          radio.msgs.splice(ri, 1);
+          renderRadio();
         }
       }
+    }
+    // 公共闲聊只有开启全频道时才接收
+    if (radio.on) {
       radio.timer -= dt;
       if (radio.timer <= 0) {
         var msg = RADIO_LIB[Math.floor(Math.random() * RADIO_LIB.length)];
@@ -5017,12 +6398,17 @@
         ctx.strokeStyle = cEdge;
         ctx.lineWidth = 1.5 / cam.zoom;
         ctx.strokeRect(-m2.rx, -m2.ry, m2.rx * 2, m2.ry * 2);
-        // 蓝色标志灯（微弱闪烁）
+        // 蓝色标志灯（呼吸闪烁+外圈光晕）
         if (m2.cargoLight) {
-          var lp = 0.4 + 0.6 * Math.abs(Math.sin(t * 1.8 + m2.fogT));
+          var lp = 0.35 + 0.65 * Math.abs(Math.sin(t * 1.5 + m2.fogT));
+          // 外圈光晕
+          ctx.fillStyle = 'rgba(80,160,255,' + (0.15 * lp) + ')';
+          ctx.beginPath(); ctx.arc(m2.rx * 0.55, -m2.ry * 0.55, 5 / cam.zoom + 3 * lp, 0, Math.PI * 2); ctx.fill();
+          // 中圈
           ctx.fillStyle = 'rgba(80,160,255,' + (0.5 * lp) + ')';
           ctx.beginPath(); ctx.arc(m2.rx * 0.55, -m2.ry * 0.55, 2.2 / cam.zoom + 1, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = 'rgba(140,200,255,' + (0.9 * lp) + ')';
+          // 核心亮点
+          ctx.fillStyle = 'rgba(180,220,255,' + (0.9 * lp) + ')';
           ctx.beginPath(); ctx.arc(m2.rx * 0.55, -m2.ry * 0.55, 1.2 / cam.zoom + 0.5, 0, Math.PI * 2); ctx.fill();
         }
       } else {
@@ -5148,11 +6534,8 @@
       ctx.beginPath(); ctx.arc(tb.x, tb.y, 200, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
       // 闪烁绿灯
-      var tbg = ctx.createRadialGradient(tb.x, tb.y, 0, tb.x, tb.y, 12 + 6 * tbp);
-      tbg.addColorStop(0, 'rgba(110,232,138,' + (0.7 + 0.3 * tbp) + ')');
-      tbg.addColorStop(1, 'rgba(110,232,138,0)');
-      ctx.fillStyle = tbg;
-      ctx.beginPath(); ctx.arc(tb.x, tb.y, 12 + 6 * tbp, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(110,232,138,' + (0.3 + 0.2 * tbp) + ')';
+      ctx.beginPath(); ctx.arc(tb.x, tb.y, 10 + 4 * tbp, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = 'rgba(180,255,200,' + (0.8 + 0.2 * tbp) + ')';
       ctx.beginPath(); ctx.arc(tb.x, tb.y, 3, 0, Math.PI * 2); ctx.fill();
     }
@@ -5177,14 +6560,21 @@
         ctx.fillRect(STATION.ringR - 4, -6, 12, 12);
         ctx.restore();
       }
+      // 环上一圈呼吸舷窗（随环旋转）
+      var hbP = 0.5 + 0.5 * Math.sin(t * 1.6);
+      ctx.fillStyle = 'rgba(200,235,255,' + (0.3 + 0.28 * hbP) + ')';
+      for (var hw = 0; hw < 16; hw++) {
+        var hwa = hw * Math.PI * 2 / 16;
+        ctx.beginPath();
+        ctx.arc(Math.cos(hwa) * STATION.ringR, Math.sin(hwa) * STATION.ringR, 1.6 / cam.zoom, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
       // 中央核心舱
-      var cg = ctx.createRadialGradient(0, 0, 0, 0, 0, STATION.coreR);
-      cg.addColorStop(0, 'rgba(230,238,248,0.9)');
-      cg.addColorStop(0.7, 'rgba(180,195,210,0.7)');
-      cg.addColorStop(1, 'rgba(140,155,170,0.3)');
-      ctx.fillStyle = cg;
+      ctx.fillStyle = 'rgba(170,185,200,0.55)';
       ctx.beginPath(); ctx.arc(0, 0, STATION.coreR, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(226,234,244,0.92)';
+      ctx.beginPath(); ctx.arc(0, 0, STATION.coreR * 0.62, 0, Math.PI * 2); ctx.fill();
       // 核心舱蓝色航行灯
       var lp = 0.5 + 0.5 * Math.sin(t * 3);
       ctx.fillStyle = 'rgba(120,200,255,' + (0.6 + 0.3 * lp) + ')';
@@ -5199,6 +6589,432 @@
         ctx.lineTo(Math.cos(aa) * (STATION.ringR - STATION.ringW / 2), Math.sin(aa) * (STATION.ringR - STATION.ringW / 2));
         ctx.stroke();
       }
+      // 上/下两个视觉停泊位（纯背景繁忙感，不加入靠泊判定）+常驻静态船
+      for (var pb = 0; pb < 2; pb++) {
+        var pby = (pb === 0 ? -1 : 1) * (STATION.ringR + 86);
+        ctx.save();
+        ctx.translate(0, pby);
+        ctx.rotate(Math.PI / 2);
+        var pp = 0.5 + 0.5 * Math.sin(t * 2 + pb);
+        ctx.fillStyle = 'rgba(110,232,138,' + (0.05 + 0.03 * pp) + ')';
+        ctx.fillRect(-56, -30, 112, 60);
+        ctx.strokeStyle = 'rgba(110,232,138,' + (0.35 + 0.15 * pp) + ')';
+        ctx.lineWidth = 1.2 / cam.zoom;
+        ctx.setLineDash([7 / cam.zoom, 5 / cam.zoom]);
+        ctx.strokeRect(-56, -30, 112, 60);
+        ctx.setLineDash([]);
+        ctx.restore();
+        drawParkedShip(0, pby, true);
+      }
+      ctx.restore();
+      // 港务交通艇（橙色小而胖等腰梯形，绕站环行，独立模型）
+      var hbx = STATION.x + Math.cos(harborBoat.ang) * harborBoat.radius;
+      var hby = STATION.y + Math.sin(harborBoat.ang) * harborBoat.radius;
+      if (hbx > vx0 - 40 && hbx < vx1 + 40 && hby > vy0 - 40 && hby < vy1 + 40) {
+        ctx.save();
+        ctx.translate(hbx, hby);
+        ctx.rotate(harborBoat.ang + Math.PI / 2);
+        ctx.fillStyle = '#ff9944';
+        ctx.beginPath();
+        ctx.moveTo(11, 0); ctx.lineTo(4, -6); ctx.lineTo(-11, -9);
+        ctx.lineTo(-11, 9); ctx.lineTo(4, 6); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,214,150,0.92)';
+        ctx.fillRect(-3, -3, 7, 6);
+        ctx.restore();
+      }
+    }
+
+    /* --- 公牛5号矿业平台 + 附属小行星（右上角，深灰多边形+橘黄栈桥，无碰撞不旋转） --- */
+    function _drawAstBase(_as) {
+      ctx.save();
+      ctx.translate(_as.x, _as.y);
+      if (_as.rot !== undefined) ctx.rotate(_as.rot);
+      // 栈桥（先画，在本体下方）
+      for (var _pi = 0; _pi < _as.piers.length; _pi++) {
+        var _pp = _as.piers[_pi];
+        ctx.save();
+        ctx.rotate(_pp.angle);
+        ctx.fillStyle = '#e8a040';
+        ctx.fillRect(_pp.startR, -_pp.width / 2, _pp.length, _pp.width);
+        if (_pp.notch) {
+          ctx.fillStyle = '#070709';
+          ctx.fillRect(_pp.startR + _pp.length * 0.45, -_pp.width / 2, _pp.width * 0.35, _pp.width * 0.55);
+        }
+        if (_pp.endBlock) {
+          ctx.fillStyle = '#55585e';
+          ctx.fillRect(_pp.startR + _pp.length - 3, -_pp.blockSize / 2, _pp.blockSize, _pp.blockSize);
+        }
+        ctx.restore();
+      }
+      // 本体：不规则深灰多边形
+      ctx.beginPath();
+      ctx.moveTo(_as.verts[0].x, _as.verts[0].y);
+      for (var _vi = 1; _vi < _as.verts.length; _vi++) ctx.lineTo(_as.verts[_vi].x, _as.verts[_vi].y);
+      ctx.closePath();
+      ctx.fillStyle = '#6b6e74';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+      ctx.lineWidth = 2 / cam.zoom;
+      ctx.stroke();
+      // 层次感：陨石坑（深灰不规则多边形）
+      if (_as.craters) {
+        for (var _cri = 0; _cri < _as.craters.length; _cri++) {
+          var _cr = _as.craters[_cri];
+          ctx.beginPath();
+          ctx.moveTo(_cr.verts[0].x, _cr.verts[0].y);
+          for (var _crj = 1; _crj < _cr.verts.length; _crj++) ctx.lineTo(_cr.verts[_crj].x, _cr.verts[_crj].y);
+          ctx.closePath();
+          ctx.fillStyle = '#4a4d52';
+          ctx.fill();
+        }
+      }
+      // 层次感：采矿面（暗橘黄矩形）
+      if (_as.miningFaces) {
+        for (var _mfi = 0; _mfi < _as.miningFaces.length; _mfi++) {
+          var _mf = _as.miningFaces[_mfi];
+          ctx.save();
+          ctx.translate(_mf.x, _mf.y);
+          ctx.rotate(_mf.angle);
+          ctx.fillStyle = '#c48430';
+          ctx.fillRect(-_mf.w / 2, -_mf.h / 2, _mf.w, _mf.h);
+          ctx.restore();
+        }
+      }
+      // 红色闪烁航标灯
+      for (var _li = 0; _li < _as.lights.length; _li++) {
+        var _l = _as.lights[_li];
+        var _lx, _ly;
+        if (_l.pier !== undefined) {
+          var _lp = _as.piers[_l.pier];
+          _lx = Math.cos(_lp.angle) * (_lp.startR + _lp.length);
+          _ly = Math.sin(_lp.angle) * (_lp.startR + _lp.length);
+        } else {
+          _lx = _l.x; _ly = _l.y;
+        }
+        var _blink = 0.35 + 0.65 * Math.abs(Math.sin(t * 2.5 + _l.phase));
+        ctx.fillStyle = 'rgba(255,55,55,' + _blink + ')';
+        ctx.beginPath();
+        ctx.arc(_lx, _ly, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // 泊位（橘黄色，仅主站有）
+      if (_as.docks) {
+        for (var _dki = 0; _dki < _as.docks.length; _dki++) {
+          var _dk = _as.docks[_dki];
+          ctx.save();
+          ctx.translate(_dk.cx, _dk.cy);
+          ctx.rotate(_dk.angle);
+          var _dkPulse = 0.5 + 0.5 * Math.sin(t * 2 + _dki);
+          // 淡橘黄填充
+          ctx.fillStyle = 'rgba(232,160,64,' + (0.06 + 0.03 * _dkPulse) + ')';
+          ctx.fillRect(-_dk.halfL, -_dk.halfW, _dk.halfL * 2, _dk.halfW * 2);
+          // 橘黄虚线边框
+          ctx.strokeStyle = 'rgba(232,160,64,' + (0.4 + 0.2 * _dkPulse) + ')';
+          ctx.lineWidth = 1.5 / cam.zoom;
+          ctx.setLineDash([8 / cam.zoom, 6 / cam.zoom]);
+          ctx.strokeRect(-_dk.halfL, -_dk.halfW, _dk.halfL * 2, _dk.halfW * 2);
+          ctx.setLineDash([]);
+          // 泊位中心线
+          ctx.strokeStyle = 'rgba(232,160,64,' + (0.2 + 0.1 * _dkPulse) + ')';
+          ctx.lineWidth = 1 / cam.zoom;
+          ctx.beginPath();
+          ctx.moveTo(-_dk.halfL, 0);
+          ctx.lineTo(_dk.halfL, 0);
+          ctx.stroke();
+          // 近进灯（泊位入口外侧，从外向内序列闪烁，像跑道引导灯）
+          var _seq = Math.floor(t * 4 + _dki * 1.7) % 4;
+          for (var _ai = 0; _ai < 4; _ai++) {
+            var _alx = _dk.halfL + 25 + _ai * 22;
+            var _dist = Math.abs(_ai - _seq);
+            var _abright = _dist === 0 ? 1.0 : (_dist === 1 ? 0.35 : 0.1);
+            ctx.fillStyle = 'rgba(255,200,100,' + (0.2 + 0.7 * _abright) + ')';
+            ctx.beginPath();
+            ctx.arc(_alx, 0, 2 + 2 * _abright, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          // 占用泊位：静态船只（驳船/采矿船/工程船）+必定拖货
+          if (_dk.occupied) {
+            var _bl = (_dk.bargeSize === 'medium') ? 25 : 18;
+            var _bw = (_dk.bargeSize === 'medium') ? 12 : 9;
+            var _stype = _dk.shipType || 'barge';
+            // 拖曳货柜（船尾方向）
+            var _cLen = _bl * 0.7, _cWid = _bw * 0.85;
+            ctx.fillStyle = 'rgba(140,145,155,0.5)';
+            ctx.fillRect(-_bl - _cLen - 5, -_cWid / 2, _cLen, _cWid);
+            ctx.strokeStyle = 'rgba(180,185,195,0.3)';
+            ctx.lineWidth = 1 / cam.zoom;
+            ctx.strokeRect(-_bl - _cLen - 5, -_cWid / 2, _cLen, _cWid);
+            // 拖缆
+            ctx.strokeStyle = 'rgba(160,165,175,0.4)';
+            ctx.beginPath(); ctx.moveTo(-_bl, 0); ctx.lineTo(-_bl - 5, 0); ctx.stroke();
+            // 船体（按类型绘制）
+            if (_stype === 'miner') {
+              ctx.fillStyle = 'rgba(190,175,150,0.88)';
+              ctx.fillRect(-_bl, -_bw, _bl * 1.6, _bw * 2);
+              ctx.fillStyle = 'rgba(220,200,160,0.9)';
+              ctx.beginPath();
+              ctx.moveTo(_bl * 1.6, -_bw * 0.5);
+              ctx.lineTo(_bl * 1.6 + 8, 0);
+              ctx.lineTo(_bl * 1.6, _bw * 0.5);
+              ctx.closePath(); ctx.fill();
+              ctx.fillStyle = 'rgba(160,140,110,0.7)';
+              ctx.fillRect(-_bl * 0.3, -_bw * 0.4, _bl * 0.5, _bw * 0.5);
+            } else if (_stype === 'engineer') {
+              ctx.fillStyle = 'rgba(200,205,215,0.85)';
+              ctx.fillRect(-_bl, -_bw, _bl * 2, _bw * 2);
+              var _craneAng = Math.sin(t * 0.6 + _dki) * 0.4;
+              ctx.save();
+              ctx.translate(_bl * 0.2, 0);
+              ctx.rotate(_craneAng);
+              ctx.strokeStyle = 'rgba(232,160,64,0.7)';
+              ctx.lineWidth = 2 / cam.zoom;
+              ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(_bl * 1.2, -_bw * 0.3); ctx.stroke();
+              ctx.fillStyle = 'rgba(232,160,64,0.6)';
+              ctx.beginPath(); ctx.arc(_bl * 1.2, -_bw * 0.3, 2, 0, Math.PI * 2); ctx.fill();
+              ctx.restore();
+            } else {
+              ctx.fillStyle = 'rgba(200,205,215,0.85)';
+              if (_dk.bargeSize === 'medium') {
+                ctx.beginPath();
+                ctx.moveTo(_bl, -_bw * 0.6);
+                ctx.lineTo(_bl * 0.8, -_bw);
+                ctx.lineTo(-_bl, -_bw);
+                ctx.lineTo(-_bl, _bw);
+                ctx.lineTo(_bl * 0.8, _bw);
+                ctx.lineTo(_bl, _bw * 0.6);
+                ctx.closePath(); ctx.fill();
+              } else {
+                ctx.fillRect(-_bl, -_bw, _bl * 2, _bw * 2);
+              }
+            }
+            // 航行灯
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.beginPath(); ctx.arc(-_bl * 0.3, -_bw * 0.5, 1.2 / cam.zoom, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(-_bl * 0.3, _bw * 0.5, 1.2 / cam.zoom, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+      // 集装箱货场（静态小方块）
+      if (_as.containers) {
+        for (var _ci = 0; _ci < _as.containers.length; _ci++) {
+          var _ct = _as.containers[_ci];
+          ctx.save();
+          ctx.translate(_ct.x, _ct.y);
+          ctx.rotate(_ct.angle);
+          ctx.fillStyle = _ct.color;
+          ctx.fillRect(-_ct.w / 2, -_ct.h / 2, _ct.w, _ct.h);
+          ctx.restore();
+        }
+      }
+      // 采矿碎屑粒子
+      if (_as.debris) {
+        for (var _dbi = 0; _dbi < _as.debris.length; _dbi++) {
+          var _db = _as.debris[_dbi];
+          var _dalpha = 1 - _db.life / _db.maxLife;
+          ctx.fillStyle = 'rgba(180,140,90,' + (_dalpha * 0.7) + ')';
+          ctx.beginPath();
+          ctx.arc(_db.x, _db.y, 1.5 + _dalpha, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // 采矿无人机群（仅主站，围绕采矿面环绕）
+      if (_as === ASTEROID_STATION && _as.miningFaces) {
+        var _mf0 = _as.miningFaces[0];
+        for (var _dri = 0; _dri < astDrones.length; _dri++) {
+          var _dr = astDrones[_dri];
+          var _drx = _mf0.x + Math.cos(_dr.angle) * _dr.radius;
+          var _dry = _mf0.y + Math.sin(_dr.angle) * _dr.radius;
+          var _drAng = _dr.angle + Math.PI / 2;
+          ctx.save();
+          ctx.translate(_drx, _dry);
+          ctx.rotate(_drAng);
+          ctx.fillStyle = 'rgba(232,160,64,0.85)';
+          ctx.beginPath();
+          ctx.moveTo(_dr.size, 0);
+          ctx.lineTo(-_dr.size * 0.6, -_dr.size * 0.7);
+          ctx.lineTo(-_dr.size * 0.6, _dr.size * 0.7);
+          ctx.closePath(); ctx.fill();
+          ctx.fillStyle = 'rgba(255,220,120,0.8)';
+          ctx.beginPath(); ctx.arc(-_dr.size * 0.3, 0, 1, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        }
+      }
+      // 货场吊机（仅主站，缓慢摆动）
+      if (_as === ASTEROID_STATION) {
+        ctx.save();
+        ctx.translate(astCrane.x, astCrane.y);
+        ctx.rotate(astCrane.angle);
+        ctx.fillStyle = 'rgba(100,100,105,0.8)';
+        ctx.fillRect(-4, -4, 8, 8);
+        ctx.strokeStyle = 'rgba(232,160,64,0.75)';
+        ctx.lineWidth = 2.5 / cam.zoom;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(astCrane.len, -8); ctx.stroke();
+        ctx.fillStyle = 'rgba(200,200,205,0.7)';
+        ctx.beginPath(); ctx.arc(astCrane.len, -8, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(180,180,185,0.4)';
+        ctx.lineWidth = 1 / cam.zoom;
+        ctx.beginPath(); ctx.moveTo(astCrane.len, -8); ctx.lineTo(astCrane.len, 4); ctx.stroke();
+        ctx.restore();
+      }
+      // 栈桥警示灯（黄色小闪烁点）
+      for (var _wpi = 0; _wpi < _as.piers.length; _wpi++) {
+        var _wp = _as.piers[_wpi];
+        if (!_wp.warnLights) continue;
+        for (var _wli = 0; _wli < _wp.warnLights.length; _wli++) {
+          var _wl = _wp.warnLights[_wli];
+          var _wlx = Math.cos(_wp.angle) * (_wp.startR + _wp.length * _wl.off);
+          var _wly = Math.sin(_wp.angle) * (_wp.startR + _wp.length * _wl.off);
+          var _wlnx = _wlx - Math.sin(_wp.angle) * _wp.width * 0.55 * _wl.side;
+          var _wlny = _wly + Math.cos(_wp.angle) * _wp.width * 0.55 * _wl.side;
+          var _wblink = 0.3 + 0.7 * Math.abs(Math.sin(t * 4 + _wli * 1.3 + _wpi));
+          ctx.fillStyle = 'rgba(255,210,80,' + _wblink + ')';
+          ctx.beginPath();
+          ctx.arc(_wlnx, _wlny, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+    var _astList = [ASTEROID_STATION, ASTEROID_SAT];
+    for (var _ai = 0; _ai < _astList.length; _ai++) {
+      var _ast = _astList[_ai];
+      var _astVR = _ast.baseR + 400;
+      if (_ast.x > vx0 - _astVR && _ast.x < vx1 + _astVR &&
+          _ast.y > vy0 - _astVR && _ast.y < vy1 + _astVR) {
+        _drawAstBase(_ast);
+      }
+    }
+    // 公牛5号港务艇（主站↔附属站往返，橘黄色）
+    var _tdx = ASTEROID_SAT.x - ASTEROID_STATION.x;
+    var _tdy = ASTEROID_SAT.y - ASTEROID_STATION.y;
+    for (var _ti = 0; _ti < astTenders.length; _ti++) {
+      var _tt = astTenders[_ti].t;
+      var _tp = _tt < 1 ? _tt : 2 - _tt;  // 三角波 0→1→0
+      var _tbx = ASTEROID_STATION.x + _tdx * _tp;
+      var _tby = ASTEROID_STATION.y + _tdy * _tp;
+      if (_tbx > vx0 - 30 && _tbx < vx1 + 30 && _tby > vy0 - 30 && _tby < vy1 + 30) {
+        var _tang = (_tt < 1) ? Math.atan2(_tdy, _tdx) : Math.atan2(-_tdy, -_tdx);
+        ctx.save();
+        ctx.translate(_tbx, _tby);
+        ctx.rotate(_tang);
+        ctx.fillStyle = '#e8a040';
+        ctx.beginPath();
+        ctx.moveTo(11, 0); ctx.lineTo(4, -6); ctx.lineTo(-11, -9);
+        ctx.lineTo(-11, 9); ctx.lineTo(4, 6); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,220,160,0.92)';
+        ctx.fillRect(-3, -3, 7, 6);
+        ctx.restore();
+      }
+    }
+
+    /* --- 废弃空间站（左下角，静止灰色放大1.3，无灯无碰撞）+ 红色警告信标 + 环绕残骸 --- */
+    var wreckViewR = WRECK.ringR + 780;
+    if (WRECK.x > vx0 - wreckViewR && WRECK.x < vx1 + wreckViewR &&
+        WRECK.y > vy0 - wreckViewR && WRECK.y < vy1 + wreckViewR) {
+      // 红色警告信标：淡红小判定圈 + 慢闪红灯
+      var wbP = 0.5 + 0.5 * Math.sin(t * 2.2);
+      ctx.strokeStyle = 'rgba(255,90,90,0.18)';
+      ctx.lineWidth = 1.2 / cam.zoom;
+      ctx.setLineDash([10 / cam.zoom, 8 / cam.zoom]);
+      ctx.beginPath(); ctx.arc(WRECK_BEACON.x, WRECK_BEACON.y, WRECK_BEACON.radius, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(255,70,70,' + (0.3 + 0.25 * wbP) + ')';
+      ctx.beginPath(); ctx.arc(WRECK_BEACON.x, WRECK_BEACON.y, 5 + 1.5 * wbP, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,150,150,' + (0.7 + 0.3 * wbP) + ')';
+      ctx.beginPath(); ctx.arc(WRECK_BEACON.x, WRECK_BEACON.y, 2.2 / cam.zoom, 0, Math.PI * 2); ctx.fill();
+      // 废弃站本体（灰色、不旋转、无舷窗无航标灯）
+      ctx.save();
+      ctx.translate(WRECK.x, WRECK.y);
+      ctx.strokeStyle = 'rgba(120,124,128,0.5)';
+      ctx.lineWidth = WRECK.ringW / cam.zoom;
+      ctx.beginPath(); ctx.arc(0, 0, WRECK.ringR, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(110,114,118,0.6)';
+      for (var wdk = 0; wdk < 4; wdk++) {
+        ctx.save(); ctx.rotate(wdk * Math.PI / 2);
+        ctx.fillRect(WRECK.ringR - 4, -6, 12, 12); ctx.restore();
+      }
+      ctx.strokeStyle = 'rgba(105,110,114,0.35)';
+      ctx.lineWidth = 3 / cam.zoom;
+      for (var wak = 0; wak < 4; wak++) {
+        var waa = wak * Math.PI / 2 + Math.PI / 4;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(waa) * WRECK.coreR, Math.sin(waa) * WRECK.coreR);
+        ctx.lineTo(Math.cos(waa) * (WRECK.ringR - WRECK.ringW / 2), Math.sin(waa) * (WRECK.ringR - WRECK.ringW / 2));
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(96,100,104,0.6)';
+      ctx.beginPath(); ctx.arc(0, 0, WRECK.coreR, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(128,132,136,0.7)';
+      ctx.beginPath(); ctx.arc(0, 0, WRECK.coreR * 0.62, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // 环绕残骸（原地自转）：junk 红锈不规则块 / rock 普通灰陨石
+      for (var wix = 0; wix < wreckage.length; wix++) {
+        var ww = wreckage[wix];
+        ctx.save();
+        ctx.translate(ww.x, ww.y);
+        ctx.rotate(ww.rot);
+        if (ww.kind === 'junk') {
+          ctx.fillStyle = '#8a4a38';
+          ctx.beginPath();
+          for (var wpp = 0; wpp < 7; wpp++) {
+            var pang = wpp * Math.PI * 2 / 7;
+            var prr = 0.78 + 0.32 * Math.sin(ww.seed + wpp * 1.7);
+            var pxx = Math.cos(pang) * ww.rx * prr, pyy = Math.sin(pang) * ww.ry * prr;
+            if (wpp === 0) ctx.moveTo(pxx, pyy); else ctx.lineTo(pxx, pyy);
+          }
+          ctx.closePath(); ctx.fill();
+          ctx.fillStyle = 'rgba(255,170,120,0.14)';
+          ctx.beginPath(); ctx.ellipse(-ww.rx * 0.25, -ww.ry * 0.25, ww.rx * 0.5, ww.ry * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = 'rgba(50,26,20,0.7)';
+          ctx.lineWidth = 1 / cam.zoom; ctx.stroke();
+        } else {
+          ctx.fillStyle = '#7c838b';
+          ctx.beginPath(); ctx.ellipse(0, 0, ww.rx, ww.ry, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.16)';
+          ctx.beginPath(); ctx.ellipse(-ww.rx * 0.25, -ww.ry * 0.25, ww.rx * 0.5, ww.ry * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = 'rgba(30,34,38,0.7)';
+          ctx.lineWidth = 1 / cam.zoom; ctx.stroke();
+        }
+        // 时空胶囊载体：微弱闪烁黄光引导
+        if (ww.capsule && !capsuleRead) {
+          var capP = 0.5 + 0.5 * Math.sin(t * 2.5 + ww.seed);
+          ctx.fillStyle = 'rgba(255,224,120,' + (0.22 + 0.3 * capP) + ')';
+          ctx.beginPath(); ctx.arc(0, 0, ww.rx * 0.55, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(255,240,170,' + (0.5 + 0.4 * capP) + ')';
+          ctx.beginPath(); ctx.arc(ww.rx * 0.2, -ww.ry * 0.2, 2.4 / cam.zoom, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+
+    /* --- 矿业平台附属站附近的橙色货箱（静态、有碰撞） --- */
+    for (var _aci = 0; _aci < astSatCargos.length; _aci++) {
+      var _ac = astSatCargos[_aci];
+      if (_ac.x < vx0 - 60 || _ac.x > vx1 + 60 || _ac.y < vy0 - 60 || _ac.y > vy1 + 60) continue;
+      ctx.save();
+      ctx.translate(_ac.x, _ac.y);
+      ctx.rotate(_ac.rot);
+      // 货箱主体（橙色）
+      ctx.fillStyle = '#c47a2e';
+      ctx.fillRect(-_ac.rx, -_ac.ry, _ac.rx * 2, _ac.ry * 2);
+      // 加强筋
+      ctx.strokeStyle = 'rgba(90,50,15,0.6)';
+      ctx.lineWidth = 1.5 / cam.zoom;
+      ctx.strokeRect(-_ac.rx, -_ac.ry, _ac.rx * 2, _ac.ry * 2);
+      for (var _rk = -1; _rk <= 1; _rk++) {
+        ctx.beginPath();
+        ctx.moveTo(_rk * _ac.rx * 0.5, -_ac.ry);
+        ctx.lineTo(_rk * _ac.rx * 0.5, _ac.ry);
+        ctx.stroke();
+      }
+      // 顶部高光
+      ctx.fillStyle = 'rgba(255,200,120,0.18)';
+      ctx.fillRect(-_ac.rx, -_ac.ry, _ac.rx * 2, _ac.ry * 0.4);
+      // 末端闪烁警示灯
+      var _acP = 0.5 + 0.5 * Math.sin(t * 3 + _aci);
+      ctx.fillStyle = 'rgba(255,220,120,' + (0.4 + 0.4 * _acP) + ')';
+      ctx.beginPath(); ctx.arc(_ac.rx - 2, 0, 1.8 / cam.zoom, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
 
@@ -5207,12 +7023,31 @@
         STATION2.y > vy0 - STATION2.ringR && STATION2.y < vy1 + STATION2.ringR) {
       ctx.save();
       ctx.translate(STATION2.x, STATION2.y);
-      // 框架外环（不旋转，用虚线表示建设中）
+      // 框架外环（缺一段表示尚未合拢）
+      var gapA0 = -0.4, gapA1 = 0.9;
       ctx.strokeStyle = 'rgba(180,100,100,0.5)';
       ctx.lineWidth = STATION2.ringW / cam.zoom;
       ctx.setLineDash([12 / cam.zoom, 8 / cam.zoom]);
-      ctx.beginPath(); ctx.arc(0, 0, STATION2.ringR, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, STATION2.ringR, gapA1, Math.PI * 2 + gapA0); ctx.stroke();
       ctx.setLineDash([]);
+      // 缺口旁漂浮的待安装桁架段（静态）
+      ctx.save();
+      ctx.rotate((gapA0 + gapA1) / 2);
+      ctx.translate(STATION2.ringR + 30, 0);
+      ctx.fillStyle = 'rgba(180,130,130,0.55)';
+      ctx.fillRect(-18, -4, 36, 8);
+      ctx.save(); ctx.translate(16, 20); ctx.rotate(0.5); ctx.fillRect(-13, -3, 26, 6); ctx.restore();
+      ctx.restore();
+      // 缓慢摆动的工程机械臂
+      var armA = Math.sin(t * 0.6) * 0.7 - 0.5;
+      ctx.save();
+      ctx.rotate(armA);
+      ctx.strokeStyle = 'rgba(170,130,130,0.75)';
+      ctx.lineWidth = 5 / cam.zoom;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(STATION2.ringR * 0.82, 0); ctx.stroke();
+      ctx.fillStyle = 'rgba(220,180,120,0.9)';
+      ctx.beginPath(); ctx.arc(STATION2.ringR * 0.82, 0, 4 / cam.zoom, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
       // 框架支撑结构（十字+对角线）
       ctx.strokeStyle = 'rgba(160,120,120,0.35)';
       ctx.lineWidth = 2 / cam.zoom;
@@ -5231,13 +7066,18 @@
       ctx.beginPath(); ctx.arc(0, 0, STATION2.coreR, 0, Math.PI * 2); ctx.stroke();
       // 红色警示航行灯（快速闪烁）
       var s2p = 0.5 + 0.5 * Math.sin(t * 8);
-      var s2g = ctx.createRadialGradient(0, 0, 0, 0, 0, 10 + 6 * s2p);
-      s2g.addColorStop(0, 'rgba(255,60,60,' + (0.7 + 0.3 * s2p) + ')');
-      s2g.addColorStop(1, 'rgba(255,40,40,0)');
-      ctx.fillStyle = s2g;
-      ctx.beginPath(); ctx.arc(0, 0, 10 + 6 * s2p, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(255,100,100,' + (0.8 + 0.2 * s2p) + ')';
+      ctx.fillStyle = 'rgba(255,70,70,' + (0.3 + 0.2 * s2p) + ')';
+      ctx.beginPath(); ctx.arc(0, 0, 8 + 3 * s2p, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,110,110,' + (0.8 + 0.2 * s2p) + ')';
       ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
+      // 缺口处慢闪黄色施工障碍灯
+      var yP = 0.5 + 0.5 * Math.sin(t * 2);
+      var yax = (gapA0 + gapA1) / 2;
+      var ylx = Math.cos(yax) * STATION2.ringR, yly = Math.sin(yax) * STATION2.ringR;
+      ctx.fillStyle = 'rgba(255,210,70,' + (0.3 + 0.25 * yP) + ')';
+      ctx.beginPath(); ctx.arc(ylx, yly, 5 + 1.5 * yP, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,230,140,' + (0.7 + 0.3 * yP) + ')';
+      ctx.beginPath(); ctx.arc(ylx, yly, 2 / cam.zoom, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
 
       // 框架站左侧3个绿色泊位（上下排列）
@@ -5294,12 +7134,87 @@
       // 作业时闪黄色警示灯
       if (eng.working) {
         var engP = 0.5 + 0.5 * Math.sin(t * 6 + eng.phase);
-        var engG = ctx.createRadialGradient(eng.x, eng.y, 0, eng.x, eng.y, 8 + 4 * engP);
-        engG.addColorStop(0, 'rgba(255,220,80,' + (0.6 + 0.3 * engP) + ')');
-        engG.addColorStop(1, 'rgba(255,200,50,0)');
-        ctx.fillStyle = engG;
-        ctx.beginPath(); ctx.arc(eng.x, eng.y, 8 + 4 * engP, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,210,70,' + (0.35 + 0.25 * engP) + ')';
+        ctx.beginPath(); ctx.arc(eng.x, eng.y, 6 + 2 * engP, 0, Math.PI * 2); ctx.fill();
       }
+    }
+
+    /* --- 静海强管制区（绿色虚线圈+极淡填充+标签） --- */
+    if (MIL_CONTROL.x > vx0 - MIL_CONTROL.r && MIL_CONTROL.x < vx1 + MIL_CONTROL.r &&
+        MIL_CONTROL.y > vy0 - MIL_CONTROL.r && MIL_CONTROL.y < vy1 + MIL_CONTROL.r) {
+      var czPulse = 0.5 + 0.5 * Math.sin(t * 1.5);
+      ctx.fillStyle = 'rgba(110,232,138,0.025)';
+      ctx.beginPath(); ctx.arc(MIL_CONTROL.x, MIL_CONTROL.y, MIL_CONTROL.r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(110,232,138,' + (0.3 + 0.12 * czPulse) + ')';
+      ctx.lineWidth = 1.5 / cam.zoom;
+      ctx.setLineDash([18 / cam.zoom, 12 / cam.zoom]);
+      ctx.beginPath(); ctx.arc(MIL_CONTROL.x, MIL_CONTROL.y, MIL_CONTROL.r, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    /* --- 对空警戒雷达平台（扫描扇/基座/桅杆/旋转天线/蓝色障碍灯/2泊位） --- */
+    if (RADAR.x > vx0 - RADAR.sweepR && RADAR.x < vx1 + RADAR.sweepR &&
+        RADAR.y > vy0 - RADAR.sweepR && RADAR.y < vy1 + RADAR.sweepR) {
+      var rdSweep = t * 0.9;
+      // 扫描扇面与距离环（简单填充，不用渐变）
+      ctx.save();
+      ctx.translate(RADAR.x, RADAR.y);
+      ctx.strokeStyle = 'rgba(120,200,255,0.12)';
+      ctx.lineWidth = 1 / cam.zoom;
+      ctx.beginPath(); ctx.arc(0, 0, RADAR.sweepR, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, RADAR.sweepR * 0.6, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(120,200,255,0.05)';
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, RADAR.sweepR, rdSweep - 0.5, rdSweep); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(150,220,255,0.09)';
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, RADAR.sweepR, rdSweep - 0.12, rdSweep); ctx.closePath(); ctx.fill();
+      // 六边形基座
+      ctx.fillStyle = 'rgba(208,216,212,0.9)';
+      ctx.beginPath();
+      for (var h6 = 0; h6 < 6; h6++) {
+        var ha = h6 * Math.PI / 3;
+        var hx = Math.cos(ha) * RADAR.baseR, hy = Math.sin(ha) * RADAR.baseR;
+        if (h6 === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.lineWidth = 1.2 / cam.zoom; ctx.stroke();
+      // 细桅杆
+      ctx.strokeStyle = 'rgba(200,210,206,0.85)';
+      ctx.lineWidth = 2.5 / cam.zoom;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -RADAR.mastH); ctx.stroke();
+      // 桅杆顶旋转相控阵天线
+      ctx.save();
+      ctx.translate(0, -RADAR.mastH);
+      ctx.rotate(rdSweep * 1.3);
+      ctx.fillStyle = 'rgba(228,234,230,0.95)';
+      ctx.beginPath(); ctx.ellipse(0, 0, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(150,165,160,0.9)';
+      ctx.fillRect(-3, -3, 6, 6);
+      ctx.restore();
+      // 蓝色航空障碍灯（简单填充慢闪）
+      var rdP = 0.5 + 0.5 * Math.sin(t * 2);
+      ctx.fillStyle = 'rgba(90,170,255,' + (0.3 + 0.2 * rdP) + ')';
+      ctx.beginPath(); ctx.arc(0, -RADAR.mastH - 4, 6 + 1.5 * rdP, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(170,220,255,' + (0.7 + 0.3 * rdP) + ')';
+      ctx.beginPath(); ctx.arc(0, -RADAR.mastH - 4, 2.2 / cam.zoom, 0, Math.PI * 2); ctx.fill();
+      // 平台左侧2个普通泊位（必须在 translate(RADAR) 的局部坐标系内绘制）
+      for (var rbi = 10; rbi < 12; rbi++) drawMilBerth(MIL_BERTHS[rbi], RADAR.x, RADAR.y, t);
+      ctx.restore();
+    }
+
+    /* --- 静海军事站港务交通艇（橙色胖梯形，绕站外环航行） --- */
+    var mbx = MIL_STATION.x + Math.cos(milBoat.ang) * milBoat.radius;
+    var mby = MIL_STATION.y + Math.sin(milBoat.ang) * milBoat.radius;
+    if (mbx > vx0 - 40 && mbx < vx1 + 40 && mby > vy0 - 40 && mby < vy1 + 40) {
+      ctx.save();
+      ctx.translate(mbx, mby);
+      ctx.rotate(milBoat.ang + Math.PI / 2);
+      ctx.fillStyle = '#ff9944';
+      ctx.beginPath();
+      ctx.moveTo(11, 0); ctx.lineTo(4, -6); ctx.lineTo(-11, -9);
+      ctx.lineTo(-11, 9); ctx.lineTo(4, 6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,214,150,0.92)';
+      ctx.fillRect(-3, -3, 7, 6);
+      ctx.restore();
     }
 
     /* --- 军事空间站（米字形桁架，纯白色，不旋转） --- */
@@ -5342,6 +7257,13 @@
           var navP = 0.5 + 0.5 * Math.sin(t * 2 + ai);
           ctx.fillStyle = 'rgba(220,190,80,' + (0.25 + 0.15 * navP) + ')';
           ctx.beginPath(); ctx.arc(armLen, 0, 2 / cam.zoom, 0, Math.PI * 2); ctx.fill();
+          // 主臂呼吸灯带（臂两侧各一排小舷窗，全站统一明暗）
+          var stripP = 0.5 + 0.5 * Math.sin(t * 1.6);
+          ctx.fillStyle = 'rgba(200,235,255,' + (0.32 + 0.3 * stripP) + ')';
+          for (var sx = MS.coreSize / 2 + 34; sx < armLen - 60; sx += 42) {
+            ctx.fillRect(sx, -armW / 2 - 3.5, 6 / cam.zoom, 2 / cam.zoom);
+            ctx.fillRect(sx, armW / 2 + 1.5, 6 / cam.zoom, 2 / cam.zoom);
+          }
         }
         ctx.restore();
       }
@@ -5377,59 +7299,8 @@
         ctx.fillRect(dockX + 20 + wi * 36, -MS.dockH/2 + 16, 16, 10);
         ctx.fillRect(dockX + 20 + wi * 36, MS.dockH/2 - 26, 16, 10);
       }
-      // 3条主桁架臂末端泊位（上、下、左，每个末端并排2个，复制0721泊位设计）
-      var berthL = 56, berthW = 30;
-      var berthGap = 10;
-      var mainEnds = [
-        { x: -MS.mainArmLen - berthL - 15, y: 0, rot: 0 },         // 左
-        { x: 0, y: MS.mainArmLen + berthL + 15, rot: Math.PI/2 },  // 上
-        { x: 0, y: -MS.mainArmLen - berthL - 15, rot: Math.PI/2 }  // 下
-      ];
-      for (var bei = 0; bei < mainEnds.length; bei++) {
-        var be = mainEnds[bei];
-        for (var bj = 0; bj < 2; bj++) {
-          var offset = (bj === 0 ? -1 : 1) * (berthW + berthGap/2);
-          var bx = be.rot === 0 ? be.x : be.x + offset;
-          var by = be.rot === 0 ? be.y + offset : be.y;
-          ctx.save();
-          ctx.translate(bx, by);
-          ctx.rotate(be.rot);
-          var bzPulse = 0.5 + 0.5 * Math.sin(t * 2 + bei * 0.5 + bj * 0.3);
-          // 绿色填充
-          ctx.fillStyle = 'rgba(110,232,138,' + (0.06 + 0.03 * bzPulse) + ')';
-          ctx.fillRect(-berthL, -berthW, berthL * 2, berthW * 2);
-          // 绿色虚线边框
-          ctx.strokeStyle = 'rgba(110,232,138,' + (0.4 + 0.2 * bzPulse) + ')';
-          ctx.lineWidth = 1.5 / cam.zoom;
-          ctx.setLineDash([8 / cam.zoom, 6 / cam.zoom]);
-          ctx.strokeRect(-berthL, -berthW, berthL * 2, berthW * 2);
-          ctx.setLineDash([]);
-          // 泊位中心线
-          ctx.strokeStyle = 'rgba(110,232,138,' + (0.2 + 0.1 * bzPulse) + ')';
-          ctx.lineWidth = 1 / cam.zoom;
-          ctx.beginPath();
-          ctx.moveTo(-berthL, 0);
-          ctx.lineTo(berthL, 0);
-          ctx.stroke();
-          ctx.restore();
-        }
-        // 近进航标灯（绿色半透明闪烁，简化绘制避免渐变性能问题）
-        for (var li = 0; li < 5; li++) {
-          var lightDist = berthL + 25 + li * 35;
-          if (be.rot === 0) {
-            lx = be.x + (be.x < 0 ? -lightDist : lightDist);
-            ly = be.y;
-          } else {
-            lx = be.x;
-            ly = be.y + (be.y > 0 ? lightDist : -lightDist);
-          }
-          var lp = 0.5 + 0.5 * Math.sin(t * 3 + li * 0.6 + bei);
-          ctx.fillStyle = 'rgba(110,232,138,' + (0.25 + 0.15 * lp) + ')';
-          ctx.beginPath(); ctx.arc(lx, ly, 4 + 1.5 * lp, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = 'rgba(180,255,200,' + (0.5 + 0.3 * lp) + ')';
-          ctx.beginPath(); ctx.arc(lx, ly, 1.2 / cam.zoom, 0, Math.PI * 2); ctx.fill();
-        }
-      }
+      // 普通泊位 B-1~B-6（统一绘制：编号/占用静态船/ILS常亮）
+      for (var mbi = 0; mbi < 6; mbi++) drawMilBerth(MIL_BERTHS[mbi], MS.x, MS.y, t);
       // 右侧两个巨型泊位（暗黄色实线框线，尺寸为普通泊位两倍）
       var bigBerthL = 112, bigBerthW = 60; // 半长112(总长224)，半宽60(总宽120)
       var bigBerths = [
@@ -5440,12 +7311,12 @@
         var bb = bigBerths[bbi];
         ctx.save();
         ctx.translate(bb.x, bb.y);
-        // 暗黄色实线框线
-        ctx.strokeStyle = 'rgba(200,160,60,0.7)';
+        // 蓝色实线框线
+        ctx.strokeStyle = 'rgba(120,180,255,0.7)';
         ctx.lineWidth = 2.5 / cam.zoom;
         ctx.strokeRect(-bigBerthL, -bigBerthW, bigBerthL * 2, bigBerthW * 2);
         // 泊位中心线
-        ctx.strokeStyle = 'rgba(200,160,60,0.25)';
+        ctx.strokeStyle = 'rgba(120,180,255,0.25)';
         ctx.lineWidth = 1 / cam.zoom;
         ctx.beginPath();
         ctx.moveTo(-bigBerthL, 0);
@@ -5458,9 +7329,9 @@
           var blx = bb.x - blDist;
           var bly = bb.y;
           var blp = 0.5 + 0.5 * Math.sin(t * 2.5 + bli * 0.5 + bbi);
-          ctx.fillStyle = 'rgba(180,50,50,' + (0.3 + 0.2 * blp) + ')';
+          ctx.fillStyle = 'rgba(120,180,255,' + (0.3 + 0.2 * blp) + ')';
           ctx.beginPath(); ctx.arc(blx, bly, 5 + 2 * blp, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = 'rgba(220,80,80,' + (0.5 + 0.3 * blp) + ')';
+          ctx.fillStyle = 'rgba(180,210,255,' + (0.5 + 0.3 * blp) + ')';
           ctx.beginPath(); ctx.arc(blx, bly, 1.8 / cam.zoom, 0, Math.PI * 2); ctx.fill();
         }
       }
@@ -5535,6 +7406,30 @@
         ctx.lineTo(Math.cos(aa2) * (MIL_SUB.ringR - MIL_SUB.ringW / 2), Math.sin(aa2) * (MIL_SUB.ringR - MIL_SUB.ringW / 2));
         ctx.stroke();
       }
+
+      // === 附属站下方4个普通泊位 S-1~S-4（统一绘制，可正常靠泊） ===
+      for (var sbi = 6; sbi < 10; sbi++) drawMilBerth(MIL_BERTHS[sbi], MIL_SUB.x, MIL_SUB.y, t);
+
+      // === 附属站上方1个巨型泊位（横向，暗黄实线+暗红近进灯，仅视觉不可靠泊） ===
+      var sbb = SUB_BIG_BERTH, sbBL = 112, sbBW = 60;
+      ctx.save();
+      ctx.translate(sbb.x, sbb.y);
+      ctx.strokeStyle = 'rgba(120,180,255,0.7)';
+      ctx.lineWidth = 2.5 / cam.zoom;
+      ctx.strokeRect(-sbBL, -sbBW, sbBL * 2, sbBW * 2);
+      ctx.strokeStyle = 'rgba(120,180,255,0.25)';
+      ctx.lineWidth = 1 / cam.zoom;
+      ctx.beginPath(); ctx.moveTo(-sbBL, 0); ctx.lineTo(sbBL, 0); ctx.stroke();
+      ctx.restore();
+      for (var sbli = 0; sbli < 6; sbli++) {
+        var sbld = sbBL + 30 + sbli * 45;
+        var sblp = 0.5 + 0.5 * Math.sin(t * 2.5 + sbli * 0.5);
+        ctx.fillStyle = 'rgba(120,180,255,' + (0.3 + 0.2 * sblp) + ')';
+        ctx.beginPath(); ctx.arc(sbb.x - sbld, sbb.y, 5 + 2 * sblp, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(180,210,255,' + (0.5 + 0.3 * sblp) + ')';
+        ctx.beginPath(); ctx.arc(sbb.x - sbld, sbb.y, 1.8 / cam.zoom, 0, Math.PI * 2); ctx.fill();
+      }
+
       ctx.restore();
     }
 
@@ -5805,6 +7700,140 @@
       ctx.beginPath(); ctx.arc(ax, ay, 1.5, 0, Math.PI * 2); ctx.fill();
     }
 
+    /* --- 0721附属干船坞（小型环形平台+桁架连接+维修中的船） --- */
+    if (stationDrydock.x > vx0 - 150 && stationDrydock.x < vx1 + 150 &&
+        stationDrydock.y > vy0 - 150 && stationDrydock.y < vy1 + 150) {
+      // 桁架连接0721
+      ctx.strokeStyle = 'rgba(140,150,160,0.3)';
+      ctx.lineWidth = 4 / cam.zoom;
+      ctx.beginPath();
+      ctx.moveTo(STATION.x + Math.cos(0.6) * STATION.ringR, STATION.y + Math.sin(0.6) * STATION.ringR);
+      ctx.lineTo(stationDrydock.x - Math.cos(0.6) * stationDrydock.ringR, stationDrydock.y - Math.sin(0.6) * stationDrydock.ringR);
+      ctx.stroke();
+      // 干船坞本体（不旋转）
+      ctx.save();
+      ctx.translate(stationDrydock.x, stationDrydock.y);
+      ctx.strokeStyle = 'rgba(160,170,180,0.5)';
+      ctx.lineWidth = 12 / cam.zoom;
+      ctx.beginPath(); ctx.arc(0, 0, stationDrydock.ringR, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(120,130,140,0.4)';
+      ctx.lineWidth = 2 / cam.zoom;
+      ctx.beginPath(); ctx.arc(0, 0, stationDrydock.ringR - 8, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(110,120,130,0.6)';
+      ctx.beginPath(); ctx.arc(0, 0, stationDrydock.coreR, 0, Math.PI * 2); ctx.fill();
+      // 维修中的船（半透明+脚手架）
+      ctx.save();
+      ctx.translate(stationDrydock.ringR * 0.5, 0);
+      ctx.rotate(0.3);
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = 'rgba(180,185,190,0.8)';
+      ctx.fillRect(-25, -10, 50, 20);
+      ctx.globalAlpha = 1;
+      // 脚手架
+      ctx.strokeStyle = 'rgba(220,180,80,0.5)';
+      ctx.lineWidth = 1 / cam.zoom;
+      for (var _sk = -2; _sk <= 2; _sk++) {
+        ctx.beginPath(); ctx.moveTo(_sk * 10, -14); ctx.lineTo(_sk * 10, 14); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.moveTo(-25, -14); ctx.lineTo(25, -14); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-25, 14); ctx.lineTo(25, 14); ctx.stroke();
+      // 焊接火花
+      var _sparkP = 0.5 + 0.5 * Math.sin(t * 12);
+      ctx.fillStyle = 'rgba(255,200,80,' + (0.3 + 0.5 * _sparkP) + ')';
+      ctx.beginPath(); ctx.arc(10, -12, 2 + _sparkP, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // 干船坞航行灯
+      var _ddP = 0.5 + 0.5 * Math.sin(t * 2);
+      ctx.fillStyle = 'rgba(255,80,80,' + (0.4 + 0.3 * _ddP) + ')';
+      ctx.beginPath(); ctx.arc(-stationDrydock.ringR, 0, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    /* --- 0721违章停泊船（挤在泊位外圈） --- */
+    for (var _ii = 0; _ii < stationIllegal.length; _ii++) {
+      var _il = stationIllegal[_ii];
+      if (_il.x < vx0 - 60 || _il.x > vx1 + 60 || _il.y < vy0 - 60 || _il.y > vy1 + 60) continue;
+      ctx.save();
+      ctx.translate(_il.x, _il.y);
+      ctx.rotate(_il.angle);
+      var _ilLen = _il.size === 'medium' ? 42 : 32;
+      var _ilWid = _il.size === 'medium' ? 18 : 14;
+      ctx.fillStyle = 'rgba(170,175,180,0.85)';
+      ctx.fillRect(-_ilLen / 2, -_ilWid / 2, _ilLen, _ilWid);
+      ctx.strokeStyle = 'rgba(200,205,210,0.4)';
+      ctx.lineWidth = 1 / cam.zoom;
+      ctx.strokeRect(-_ilLen / 2, -_ilWid / 2, _ilLen, _ilWid);
+      // 船头
+      ctx.fillStyle = 'rgba(185,190,195,0.85)';
+      ctx.beginPath();
+      ctx.moveTo(_ilLen / 2, 0);
+      ctx.lineTo(_ilLen / 2 - 8, -_ilWid / 2);
+      ctx.lineTo(_ilLen / 2 - 8, _ilWid / 2);
+      ctx.closePath(); ctx.fill();
+      // 航行灯（常亮微闪）
+      var _ilP = 0.5 + 0.5 * Math.sin(t * 3 + _ii);
+      ctx.fillStyle = 'rgba(255,80,80,' + (0.4 + 0.3 * _ilP) + ')';
+      ctx.beginPath(); ctx.arc(_ilLen / 2 - 4, 0, 1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    /* --- 0721漂浮杂物（浅灰小集装箱/碎片，缓慢漂移） --- */
+    for (var _sdi = 0; _sdi < stationDebris.length; _sdi++) {
+      var _sd = stationDebris[_sdi];
+      if (_sd.x < vx0 - 30 || _sd.x > vx1 + 30 || _sd.y < vy0 - 30 || _sd.y > vy1 + 30) continue;
+      ctx.save();
+      ctx.translate(_sd.x, _sd.y);
+      ctx.rotate(_sd.rot);
+      if (_sd.kind === 'crate') {
+        ctx.fillStyle = 'rgba(130,135,140,0.7)';
+        ctx.fillRect(-_sd.rx, -_sd.ry, _sd.rx * 2, _sd.ry * 2);
+        ctx.strokeStyle = 'rgba(90,95,100,0.5)';
+        ctx.lineWidth = 1 / cam.zoom;
+        ctx.strokeRect(-_sd.rx, -_sd.ry, _sd.rx * 2, _sd.ry * 2);
+        ctx.strokeStyle = 'rgba(100,105,110,0.3)';
+        ctx.beginPath(); ctx.moveTo(0, -_sd.ry); ctx.lineTo(0, _sd.ry); ctx.stroke();
+      } else {
+        ctx.fillStyle = 'rgba(115,120,125,0.6)';
+        ctx.beginPath();
+        for (var _spp = 0; _spp < 6; _spp++) {
+          var _spang = _spp * Math.PI / 3;
+          var _sprr = 0.75 + 0.35 * Math.sin(_sd.rot * 2 + _spp * 1.3);
+          var _spx = Math.cos(_spang) * _sd.rx * _sprr, _spy = Math.sin(_spang) * _sd.ry * _sprr;
+          if (_spp === 0) ctx.moveTo(_spx, _spy); else ctx.lineTo(_spx, _spy);
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    /* --- 0721广告灯牌（橘黄色闪烁小方块） --- */
+    if (stationSign.x > vx0 - 20 && stationSign.x < vx1 + 20 &&
+        stationSign.y > vy0 - 20 && stationSign.y < vy1 + 20) {
+      var _signP = 0.5 + 0.5 * Math.sin(t * 4);
+      ctx.fillStyle = 'rgba(80,60,30,0.8)';
+      ctx.fillRect(stationSign.x - 8, stationSign.y - 5, 16, 10);
+      ctx.fillStyle = 'rgba(255,180,60,' + (0.5 + 0.4 * _signP) + ')';
+      ctx.fillRect(stationSign.x - 6, stationSign.y - 3, 12, 6);
+      ctx.fillStyle = 'rgba(255,220,140,' + (0.3 + 0.4 * _signP) + ')';
+      ctx.fillRect(stationSign.x - 5, stationSign.y - 2, 4, 4);
+    }
+
+    /* --- 护航任务判定圈（浅黄色） --- */
+    if (currentTask && currentTask.type === 'escort' && currentTask.escortShip) {
+      var _es = currentTask.escortShip;
+      if (_es.x > vx0 - 400 && _es.x < vx1 + 400 && _es.y > vy0 - 400 && _es.y < vy1 + 400) {
+        ctx.beginPath();
+        ctx.arc(_es.x, _es.y, currentTask.escortRadius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,230,120,0.06)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,230,120,0.35)';
+        ctx.lineWidth = 1.5 / cam.zoom;
+        ctx.setLineDash([8 / cam.zoom, 6 / cam.zoom]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
     /* --- 交通船：商船 + 无人驳船（极简四级尺寸） --- */
     var trafficAll = merchants.concat(barges);
     for (var ti = 0; ti < trafficAll.length; ti++) {
@@ -5889,6 +7918,15 @@
         ctx.beginPath(); ctx.arc(lx, hw * 0.5, 1.2 / cam.zoom, 0, Math.PI * 2); ctx.fill();
       }
 
+      // 海事航行灯：左舷红(-y)、右舷绿(+y)、船尾白（缩小半透明，不突出船体轮廓）
+      var navP = 0.5 + 0.5 * Math.sin(t * 2.5 + tv.phase);
+      ctx.fillStyle = 'rgba(255,50,50,' + (0.22 + 0.13 * navP) + ')';
+      ctx.beginPath(); ctx.arc(hl * 0.55, -hw * 0.65, 0.9 / cam.zoom, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(50,255,80,' + (0.22 + 0.13 * navP) + ')';
+      ctx.beginPath(); ctx.arc(hl * 0.55, hw * 0.65, 0.9 / cam.zoom, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.18 + 0.12 * navP) + ')';
+      ctx.beginPath(); ctx.arc(-hl * 0.7, 0, 0.75 / cam.zoom, 0, Math.PI * 2); ctx.fill();
+
       // 推进光：商船双束淡黄，驳船单束淡蓝
       var engPulse = 0.6 + 0.4 * Math.sin(t * 8 + tv.phase);
       if (isBarge) {
@@ -5906,6 +7944,50 @@
         }
       }
       ctx.restore();
+    }
+
+    /* --- 飞船航行尾迹 --- */
+    for (var _ti = 0; _ti < shipTrail.length; _ti++) {
+      var _tp = shipTrail[_ti];
+      if (_tp.x < vx0 - 20 || _tp.x > vx1 + 20 || _tp.y < vy0 - 20 || _tp.y > vy1 + 20) continue;
+      var _alpha = _tp.life * 0.35;
+      ctx.fillStyle = 'rgba(220,225,235,' + _alpha + ')';
+      ctx.beginPath(); ctx.arc(_tp.x, _tp.y, _tp.size * _tp.life, 0, Math.PI * 2); ctx.fill();
+    }
+
+    /* --- 流星 --- */
+    for (var _mi = 0; _mi < shootingStars.length; _mi++) {
+      var _m = shootingStars[_mi];
+      if (_m.trail.length > 1) {
+        ctx.strokeStyle = 'rgba(200,215,255,' + (0.4 * _m.life / 2.5) + ')';
+        ctx.lineWidth = 1.5 / cam.zoom;
+        ctx.beginPath();
+        ctx.moveTo(_m.trail[0].x, _m.trail[0].y);
+        for (var _mj = 1; _mj < _m.trail.length; _mj++) ctx.lineTo(_m.trail[_mj].x, _m.trail[_mj].y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(240,245,255,' + (0.8 * _m.life / 2.5) + ')';
+      ctx.beginPath(); ctx.arc(_m.x, _m.y, 2 / cam.zoom, 0, Math.PI * 2); ctx.fill();
+    }
+
+    /* --- 0721交通艇 --- */
+    if (stationShuttle.state !== 'docked') {
+      var _ss = stationShuttle;
+      if (_ss.x > vx0 - 30 && _ss.x < vx1 + 30 && _ss.y > vy0 - 30 && _ss.y < vy1 + 30) {
+        ctx.save();
+        ctx.translate(_ss.x, _ss.y);
+        ctx.rotate(_ss.angle);
+        ctx.fillStyle = 'rgba(190,195,205,0.85)';
+        ctx.fillRect(-8, -4, 16, 8);
+        ctx.fillStyle = 'rgba(160,200,255,0.5)';
+        ctx.beginPath(); ctx.arc(-8, 0, 2.5, 0, Math.PI * 2); ctx.fill();
+        // 航行灯
+        ctx.fillStyle = 'rgba(255,60,60,0.8)';
+        ctx.beginPath(); ctx.arc(4, -4, 1.2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(60,255,60,0.8)';
+        ctx.beginPath(); ctx.arc(4, 4, 1.2, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
     }
 
     /* --- 飞船 --- */
@@ -6096,6 +8178,41 @@
       ctx.beginPath(); ctx.moveTo(-32, 8); ctx.lineTo(-52, 8); ctx.stroke();
     }
 
+    // 采矿平台超重货箱拖拽（协助运输任务，三个串联）
+    if (cargoState === 'towing') {
+      var cgLen = 36, cgWid = 26, cgGap = 6;
+      // 主拖缆
+      ctx.strokeStyle = 'rgba(180,185,195,0.5)';
+      ctx.lineWidth = 2 / cam.zoom;
+      ctx.beginPath(); ctx.moveTo(-32, 0); ctx.lineTo(-48, 0); ctx.stroke();
+      // 三个串联货箱
+      var cgBlink = 0.4 + 0.6 * Math.abs(Math.sin(t * 3));
+      for (var cgi = 0; cgi < 3; cgi++) {
+        var cgX0 = -48 - cgi * (cgLen + cgGap);
+        // 货箱间连接缆
+        if (cgi > 0) {
+          ctx.strokeStyle = 'rgba(160,165,175,0.45)';
+          ctx.lineWidth = 1.5 / cam.zoom;
+          ctx.beginPath(); ctx.moveTo(cgX0 + cgGap, 0); ctx.lineTo(cgX0, 0); ctx.stroke();
+        }
+        // 货箱本体（深灰金属质感）
+        ctx.fillStyle = 'rgba(130,135,145,0.85)';
+        ctx.fillRect(cgX0 - cgLen, -cgWid / 2, cgLen, cgWid);
+        ctx.strokeStyle = 'rgba(170,175,185,0.5)';
+        ctx.lineWidth = 1 / cam.zoom;
+        ctx.strokeRect(cgX0 - cgLen, -cgWid / 2, cgLen, cgWid);
+        // 货箱加强筋
+        ctx.strokeStyle = 'rgba(100,105,115,0.4)';
+        ctx.beginPath();
+        ctx.moveTo(cgX0 - cgLen * 0.5, -cgWid / 2); ctx.lineTo(cgX0 - cgLen * 0.5, cgWid / 2);
+        ctx.stroke();
+      }
+      // 末端货箱警示灯
+      var cgEndX = -48 - 2 * (cgLen + cgGap) - cgLen;
+      ctx.fillStyle = 'rgba(255,180,60,' + cgBlink + ')';
+      ctx.beginPath(); ctx.arc(cgEndX, 0, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+
     // 重型炮口闪光（增强版，随档位调节强度与持续）
     var mAge = (now - muzzleT) / 1000;
     if (mAge < muzzleDur) {
@@ -6235,6 +8352,21 @@
     ctx.fillRect(milMx - 3, milMy - 2, 6, 4);
     ctx.strokeStyle = 'rgba(80,160,90,0.4)';
     ctx.strokeRect(milMx - 4.5, milMy - 3.5, 9, 7);
+    // 废弃空间站（灰色实心方块）
+    ctx.fillStyle = 'rgba(150,150,150,0.85)';
+    var wrMx = mmX + WRECK.x / MAP.w * mmW;
+    var wrMy = mmY + WRECK.y / MAP.h * mmH;
+    ctx.fillRect(wrMx - 2.5, wrMy - 2.5, 5, 5);
+    // 公牛5号矿业平台（橙色方块）
+    ctx.fillStyle = 'rgba(232,160,64,0.9)';
+    var _astMx = mmX + ASTEROID_STATION.x / MAP.w * mmW;
+    var _astMy = mmY + ASTEROID_STATION.y / MAP.h * mmH;
+    ctx.fillRect(_astMx - 3, _astMy - 3, 6, 6);
+    // 附属小行星（稍小橙色方块）
+    ctx.fillStyle = 'rgba(232,160,64,0.7)';
+    var _satMx = mmX + ASTEROID_SAT.x / MAP.w * mmW;
+    var _satMy = mmY + ASTEROID_SAT.y / MAP.h * mmH;
+    ctx.fillRect(_satMx - 2, _satMy - 2, 4, 4);
     // 侦查无人机集群（暗红色点）
     for (var dmi = 0; dmi < droneClusters.length; dmi++) {
       var dmc = droneClusters[dmi];
@@ -6272,11 +8404,6 @@
     ctx.closePath();
     ctx.fill();
     ctx.restore();
-    // 永恒苍穹级航母（白色圆点，略大）——必须显式设白色，否则会沿用上游颜色
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(mmX + carrierShip.x / MAP.w * mmW, mmY + carrierShip.y / MAP.h * mmH, 2.5, 0, Math.PI * 2);
-    ctx.fill();
   }
 
   var frameErrorCount = 0;
@@ -6317,6 +8444,9 @@
   spawnStationShuttles();
   spawnMilShuttles();
   spawnBeacons();
+  initWreck();
+  initAstSatCargos();
+  initStationAtmosphere();
   start();
 })();
 </script>
